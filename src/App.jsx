@@ -625,7 +625,7 @@ function btnSecondary(theme) {
 // Home 頁
 // ============================================================================
 
-function HomePage({ theme, isMobile, onNavigate, morningAnchors, sundayWitnesses, ritualEntries }) {
+function HomePage({ theme, isMobile, onNavigate, morningAnchors, sundayWitnesses, ritualEntries, relationships, onNavigateToRelDetail }) {
   const [quoteIdx] = useState(() => Math.floor(Math.random() * QUOTES.length));
   const today = todayStr();
   const quote = QUOTES[quoteIdx];
@@ -694,6 +694,48 @@ function HomePage({ theme, isMobile, onNavigate, morningAnchors, sundayWitnesses
           進入儀式
         </button>
       </div>
+
+      {/* 關係一行文字 */}
+      {(() => {
+        const active = (relationships || []).find(r => r.currentStage !== 'paused' && r.currentStage !== 'ended');
+        if (!active) return null;
+        const relDays = daysDiff(active.startTrackingDate, todayStr()) + 1;
+        const isObsReady = active.currentStage === 'observation' && relDays >= 30;
+        return (
+          <div style={{
+            ...cardStyle(theme),
+            marginBottom: 20,
+            borderLeft: '2px solid ' + theme.navy,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '12px 16px',
+          }}>
+            <span style={{ fontSize: 14, color: theme.t2 }}>
+              追蹤中：<span style={{ fontWeight: 500, color: theme.t1, fontFamily: "'Noto Serif TC', serif" }}>{active.codename}</span>
+            </span>
+            {isObsReady ? (
+              <button
+                onClick={() => onNavigateToRelDetail && onNavigateToRelDetail(active.id)}
+                style={{
+                  background: theme.coral + '18',
+                  border: '0.5px solid ' + theme.coral + '60',
+                  color: theme.coral,
+                  borderRadius: 20,
+                  padding: '4px 12px',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  animation: 'pulseDot 2s ease-in-out infinite',
+                }}
+              >
+                切換到發展中？
+              </button>
+            ) : (
+              <span style={{ fontSize: 13, color: theme.t3 }}>
+                {stageLabel(active.currentStage)}・第 {relDays} 天
+              </span>
+            )}
+          </div>
+        );
+      })()}
 
       {/* 次要入口 */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
@@ -2461,7 +2503,10 @@ function RelationshipNotes({ theme, relationship, onUpdate }) {
 // 關係管理 — 單一關係頁
 // ============================================================================
 
-function RelationshipDetailPage({ theme, isMobile, relationship, depthGauges, onBack, onNavigateToGauge, onUpdateRelationship }) {
+function RelationshipDetailPage({ theme, isMobile, relationship, depthGauges, onBack, onNavigateToGauge, onUpdateRelationship, showToast }) {
+  const [stageModal, setStageModal] = useState(null); // null | 'developing' | 'pause' | 'resume' | 'end'
+  const [endingText, setEndingText] = useState('');
+
   if (!relationship) return null;
   const font = "'Noto Serif TC', serif";
 
@@ -2472,21 +2517,76 @@ function RelationshipDetailPage({ theme, isMobile, relationship, depthGauges, on
     ? Math.floor((Date.now() - lastGauge.createdAt) / 86400000)
     : 999;
   const canFillGauge = daysSinceLast >= 6;
+  const isObservationReady = relationship.currentStage === 'observation' && days >= 30;
+
+  const handleStageConfirm = () => {
+    if (stageModal === 'developing') {
+      onUpdateRelationship({ ...relationship, currentStage: 'developing' });
+      setStageModal(null);
+      if (showToast) showToast('neutral', '已進入發展中。');
+    } else if (stageModal === 'pause') {
+      onUpdateRelationship({ ...relationship, currentStage: 'paused' });
+      setStageModal(null);
+      onBack();
+    } else if (stageModal === 'resume') {
+      onUpdateRelationship({ ...relationship, currentStage: 'developing' });
+      setStageModal(null);
+      if (showToast) showToast('neutral', '已恢復追蹤。');
+    } else if (stageModal === 'end') {
+      onUpdateRelationship({ ...relationship, currentStage: 'ended', endDate: todayStr(), endingReflection: endingText });
+      setStageModal(null);
+      onBack();
+    }
+  };
 
   return (
-    <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '20px 16px 100px' : '32px 24px 80px' }}>
+    <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '20px 16px 100px' : '32px 24px 80px', position: 'relative' }}>
+
+      {/* 觀察期脈動提示球 */}
+      {isObservationReady && (
+        <button
+          onClick={() => setStageModal('developing')}
+          title="觀察期滿 30 天，可切換到發展中"
+          style={{
+            position: 'absolute',
+            top: isMobile ? 20 : 32,
+            right: isMobile ? 16 : 24,
+            width: 16, height: 16,
+            borderRadius: '50%',
+            background: theme.coral,
+            border: '2px solid ' + theme.bgCard,
+            cursor: 'pointer',
+            padding: 0,
+            animation: 'pulseDot 1.5s ease-in-out infinite',
+            zIndex: 10,
+          }}
+        />
+      )}
+
       <PageHeader title={relationship.codename} onBack={onBack} theme={theme} />
 
+      {/* 階段卡 */}
       <div style={{ ...cardStyle(theme), marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
           <span style={{ fontSize: 12, padding: '3px 10px', borderRadius: 4, background: theme.accentLight, color: theme.accent, fontFamily: font }}>
             {stageLabel(relationship.currentStage)}
           </span>
           <span style={{ fontSize: 13, color: theme.t3 }}>第 {days} 天</span>
+          {isObservationReady && (
+            <span
+              onClick={() => setStageModal('developing')}
+              style={{ fontSize: 11, color: theme.coral, cursor: 'pointer', textDecoration: 'underline' }}>
+              可切換到發展中
+            </span>
+          )}
         </div>
         <div style={{ fontSize: 12, color: theme.t3 }}>起始：{formatDate(relationship.startTrackingDate)}</div>
+        {relationship.endDate && (
+          <div style={{ fontSize: 12, color: theme.t3, marginTop: 4 }}>結束：{formatDate(relationship.endDate)}</div>
+        )}
       </div>
 
+      {/* 量表區 */}
       <div style={{ ...cardStyle(theme), marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
@@ -2506,17 +2606,19 @@ function RelationshipDetailPage({ theme, isMobile, relationship, depthGauges, on
               <div style={{ fontSize: 12, color: theme.t3 }}>尚未填寫</div>
             )}
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-            <button
-              onClick={() => canFillGauge && onNavigateToGauge(relationship.id)}
-              disabled={!canFillGauge}
-              style={btnPrimary(theme, !canFillGauge)}>
-              {canFillGauge ? '填寫本週量表' : '本週已測'}
-            </button>
-            {canFillGauge && (
-              <span style={{ fontSize: 11, color: theme.accent }}>本週可測</span>
-            )}
-          </div>
+          {relationship.currentStage !== 'ended' && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+              <button
+                onClick={() => canFillGauge && onNavigateToGauge(relationship.id)}
+                disabled={!canFillGauge}
+                style={btnPrimary(theme, !canFillGauge)}>
+                {canFillGauge ? '填寫本週量表' : '本週已測'}
+              </button>
+              {canFillGauge && (
+                <span style={{ fontSize: 11, color: theme.accent }}>本週可測</span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -2542,7 +2644,123 @@ function RelationshipDetailPage({ theme, isMobile, relationship, depthGauges, on
         </div>
       )}
 
+      {/* 結語（已結束時顯示） */}
+      {relationship.currentStage === 'ended' && relationship.endingReflection && (
+        <div style={{ ...cardStyle(theme), marginBottom: 16 }}>
+          <div style={{ fontSize: 14, fontWeight: 500, color: theme.t1, marginBottom: 12, fontFamily: font }}>結語</div>
+          <p style={{ margin: 0, fontSize: 14, color: theme.t2, lineHeight: 1.7, whiteSpace: 'pre-wrap', fontStyle: 'italic', fontFamily: font }}>
+            {relationship.endingReflection}
+          </p>
+        </div>
+      )}
+
       <RelationshipNotes theme={theme} relationship={relationship} onUpdate={onUpdateRelationship} />
+
+      {/* 階段管理按鈕 */}
+      {relationship.currentStage !== 'ended' && (
+        <div style={{ ...cardStyle(theme), marginTop: 16 }}>
+          <div style={{ fontSize: 12, color: theme.t3, marginBottom: 12, letterSpacing: '0.04em' }}>—— 階段管理 ——</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {relationship.currentStage === 'observation' && (
+              <button onClick={() => setStageModal('developing')} style={btnPrimary(theme)}>
+                切換到發展中
+              </button>
+            )}
+            {relationship.currentStage === 'developing' && (
+              <button onClick={() => setStageModal('pause')} style={btnSecondary(theme)}>
+                暫停追蹤
+              </button>
+            )}
+            {relationship.currentStage === 'paused' && (
+              <button onClick={() => setStageModal('resume')} style={btnPrimary(theme)}>
+                恢復追蹤
+              </button>
+            )}
+            <button
+              onClick={() => { setEndingText(''); setStageModal('end'); }}
+              style={{ ...btnSecondary(theme), color: theme.coral, borderColor: theme.coral + '50' }}>
+              結束追蹤
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 階段確認 Modal */}
+      {stageModal && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
+          display: 'flex', alignItems: isMobile ? 'flex-end' : 'center',
+          justifyContent: 'center', zIndex: 1000, padding: isMobile ? 0 : 16,
+        }} onClick={() => setStageModal(null)}>
+          <div style={{
+            background: theme.bgCard,
+            borderRadius: isMobile ? '12px 12px 0 0' : 12,
+            border: '0.5px solid ' + theme.border,
+            width: '100%', maxWidth: isMobile ? '100%' : 480,
+            padding: 24,
+          }} onClick={e => e.stopPropagation()}>
+
+            {stageModal === 'developing' && (
+              <>
+                <div style={{ fontSize: 16, fontWeight: 500, color: theme.t1, marginBottom: 12, fontFamily: font }}>切換到發展中</div>
+                <p style={{ fontSize: 14, color: theme.t2, lineHeight: 1.7, margin: '0 0 20px', fontStyle: 'italic' }}>
+                  你已追蹤 {days} 天。<br />要將這段關係切換到「發展中」階段嗎？
+                </p>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                  <button onClick={() => setStageModal(null)} style={btnSecondary(theme)}>繼續觀察</button>
+                  <button onClick={handleStageConfirm} style={btnPrimary(theme)}>切換</button>
+                </div>
+              </>
+            )}
+
+            {stageModal === 'pause' && (
+              <>
+                <div style={{ fontSize: 16, fontWeight: 500, color: theme.t1, marginBottom: 12, fontFamily: font }}>暫停追蹤</div>
+                <p style={{ fontSize: 14, color: theme.t2, lineHeight: 1.7, margin: '0 0 20px', fontStyle: 'italic' }}>
+                  暫時停下來，不代表放棄。<br />需要的時候，可以恢復。
+                </p>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                  <button onClick={() => setStageModal(null)} style={btnSecondary(theme)}>取消</button>
+                  <button onClick={handleStageConfirm} style={btnPrimary(theme)}>暫停</button>
+                </div>
+              </>
+            )}
+
+            {stageModal === 'resume' && (
+              <>
+                <div style={{ fontSize: 16, fontWeight: 500, color: theme.t1, marginBottom: 12, fontFamily: font }}>恢復追蹤</div>
+                <p style={{ fontSize: 14, color: theme.t2, lineHeight: 1.7, margin: '0 0 20px', fontStyle: 'italic' }}>
+                  歡迎回來。切換到「發展中」繼續。
+                </p>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                  <button onClick={() => setStageModal(null)} style={btnSecondary(theme)}>取消</button>
+                  <button onClick={handleStageConfirm} style={btnPrimary(theme)}>恢復</button>
+                </div>
+              </>
+            )}
+
+            {stageModal === 'end' && (
+              <>
+                <div style={{ fontSize: 16, fontWeight: 500, color: theme.t1, marginBottom: 12, fontFamily: font }}>結束追蹤</div>
+                <p style={{ fontSize: 14, color: theme.t2, lineHeight: 1.7, margin: '0 0 16px' }}>
+                  在這裡為這段旅程留下一段話（選填）。
+                </p>
+                <AutoTextarea
+                  value={endingText}
+                  onChange={e => setEndingText(e.target.value)}
+                  placeholder="這段關係教會了我……"
+                  style={{ ...inputStyle(theme), minHeight: 100 }}
+                  minRows={3}
+                />
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
+                  <button onClick={() => setStageModal(null)} style={btnSecondary(theme)}>取消</button>
+                  <button onClick={handleStageConfirm} style={{ ...btnPrimary(theme), background: theme.coral }}>結束</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2709,16 +2927,18 @@ function DepthGaugePage({ theme, isMobile, relationship, onBack, onSave }) {
 // 設定頁
 // ============================================================================
 
-function SettingsPage({ theme, isMobile, themeKey, onChangeTheme, onExportDaily, onImportDaily, isArtifactMode }) {
-  const fileRef = useRef(null);
+function SettingsPage({ theme, isMobile, themeKey, onChangeTheme, onExportDaily, onImportDaily, onExportRelationships, onImportRelationships, isArtifactMode }) {
+  const dailyFileRef = useRef(null);
+  const relFileRef = useRef(null);
+  const font = "'Noto Serif TC', serif";
 
   return (
     <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '20px 16px 100px' : '32px 24px 80px' }}>
-      <h2 style={{ margin: '0 0 28px', fontSize: 20, fontWeight: 500, color: theme.t1, fontFamily: "'Noto Serif TC', serif" }}>設定</h2>
+      <h2 style={{ margin: '0 0 28px', fontSize: 20, fontWeight: 500, color: theme.t1, fontFamily: font }}>設定</h2>
 
       {/* 主題切換 */}
       <div style={{ ...cardStyle(theme), marginBottom: 16 }}>
-        <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 500, color: theme.t1, fontFamily: "'Noto Serif TC', serif" }}>主題</h3>
+        <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 500, color: theme.t1, fontFamily: font }}>主題</h3>
         <div style={{ display: 'flex', gap: 12 }}>
           {Object.entries(themes).map(([key, t]) => (
             <button key={key} onClick={() => onChangeTheme(key)} style={{
@@ -2731,37 +2951,53 @@ function SettingsPage({ theme, isMobile, themeKey, onChangeTheme, onExportDaily,
                 <div style={{ width: 14, height: 14, borderRadius: '50%', background: t.coral }} />
                 <div style={{ width: 14, height: 14, borderRadius: '50%', background: t.navy }} />
               </div>
-              <div style={{ fontSize: 13, fontWeight: 500, color: t.t1, fontFamily: "'Noto Serif TC', serif" }}>{t.name}</div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: t.t1, fontFamily: font }}>{t.name}</div>
             </button>
           ))}
         </div>
       </div>
 
-      {/* 資料管理 */}
+      {/* 日常紀錄 */}
       <div style={{ ...cardStyle(theme), marginBottom: 16 }}>
-        <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 500, color: theme.t1, fontFamily: "'Noto Serif TC', serif" }}>資料管理</h3>
+        <h3 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 500, color: theme.t1, fontFamily: font }}>日常紀錄</h3>
+        <div style={{ fontSize: 12, color: theme.t3, marginBottom: 14 }}>晨間錨點 · 週日見證 · 月度獨處 · 小勇敢 · 儀式紀錄</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <button onClick={onExportDaily} style={{ ...btnSecondary(theme), display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
             <Icon name="download" size={16} color={theme.t2} />
-            匯出日常紀錄 (daily.json)
+            匯出 daily.json
           </button>
           <div>
-            <button onClick={() => fileRef.current?.click()} style={{ ...btnSecondary(theme), display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', width: '100%' }}>
+            <button onClick={() => dailyFileRef.current?.click()} style={{ ...btnSecondary(theme), display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', width: '100%' }}>
               <Icon name="upload" size={16} color={theme.t2} />
-              匯入日常紀錄 (daily.json)
+              匯入 daily.json
             </button>
-            <input ref={fileRef} type="file" accept="application/json" onChange={onImportDaily} style={{ display: 'none' }} />
+            <input ref={dailyFileRef} type="file" accept="application/json" onChange={onImportDaily} style={{ display: 'none' }} />
           </div>
-          <div style={{ ...cardStyle(theme), background: theme.bgDeep, padding: '12px 16px' }}>
-            <div style={{ fontSize: 12, color: theme.t3, marginBottom: 4 }}>匯出包含</div>
-            <div style={{ fontSize: 13, color: theme.t2 }}>晨間錨點 · 週日見證 · 月度獨處 · 小勇敢 · 儀式紀錄</div>
+        </div>
+      </div>
+
+      {/* 關係資料 */}
+      <div style={{ ...cardStyle(theme), marginBottom: 16 }}>
+        <h3 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 500, color: theme.t1, fontFamily: font }}>關係資料</h3>
+        <div style={{ fontSize: 12, color: theme.t3, marginBottom: 14 }}>關係追蹤 · 暈船量表紀錄</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <button onClick={onExportRelationships} style={{ ...btnSecondary(theme), display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
+            <Icon name="download" size={16} color={theme.t2} />
+            匯出 relationships.json
+          </button>
+          <div>
+            <button onClick={() => relFileRef.current?.click()} style={{ ...btnSecondary(theme), display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', width: '100%' }}>
+              <Icon name="upload" size={16} color={theme.t2} />
+              匯入 relationships.json
+            </button>
+            <input ref={relFileRef} type="file" accept="application/json" onChange={onImportRelationships} style={{ display: 'none' }} />
           </div>
         </div>
       </div>
 
       {/* 關於 */}
       <div style={{ ...cardStyle(theme) }}>
-        <h3 style={{ margin: '0 0 12px', fontSize: 15, fontWeight: 500, color: theme.t1, fontFamily: "'Noto Serif TC', serif" }}>關於</h3>
+        <h3 style={{ margin: '0 0 12px', fontSize: 15, fontWeight: 500, color: theme.t1, fontFamily: font }}>關於</h3>
         <div style={{ fontSize: 13, color: theme.t2, lineHeight: 1.7 }}>
           <div>Inner Compass</div>
           <div style={{ color: theme.t3, marginTop: 4 }}>版本 {TOOL_VERSION}</div>
@@ -3075,6 +3311,45 @@ export default function App() {
     e.target.value = '';
   }, [showToast]);
 
+  const navigateToRelDetail = useCallback((id) => {
+    setCurrentPage(PAGES.RELATIONSHIP);
+    setRelSubPage({ type: 'detail', id });
+  }, []);
+
+  const handleExportRelationships = useCallback(() => {
+    const payload = {
+      version: '1.0',
+      type: 'inner-compass-relationships',
+      exportedAt: new Date().toISOString(),
+      data: { relationships, depthGauges },
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'inner-compass-relationships-' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('neutral', '關係資料已匯出');
+  }, [relationships, depthGauges, showToast]);
+
+  const handleImportRelationships = useCallback((e) => {
+    const file = e.target.files?.[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const imported = JSON.parse(ev.target.result);
+        if (imported.type !== 'inner-compass-relationships') { showToast('error', '檔案格式不符'); return; }
+        const d = imported.data;
+        if (d.relationships) setRelationships(d.relationships);
+        if (d.depthGauges) setDepthGauges(d.depthGauges);
+        showToast('neutral', '關係資料已匯入');
+      } catch { showToast('error', '匯入失敗：檔案解析錯誤'); }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  }, [showToast]);
+
   const fontFamily = "'Noto Serif TC', 'Songti TC', Georgia, serif";
 
   return (
@@ -3083,6 +3358,7 @@ export default function App() {
         @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;500&display=swap');
         @keyframes toastIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes pulseDot { 0%, 100% { opacity: 0.55; transform: scale(1); } 50% { opacity: 1; transform: scale(1.5); } }
         @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
         button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid ${theme.accent}; outline-offset: 2px; }
         input::placeholder, textarea::placeholder { color: ${theme.t3}; }
@@ -3131,7 +3407,8 @@ export default function App() {
         <div style={{ flex: 1, overflow: 'auto' }}>
           {currentPage === PAGES.HOME && (
             <HomePage theme={theme} isMobile={isMobile} onNavigate={navigate}
-              morningAnchors={morningAnchors} sundayWitnesses={sundayWitnesses} ritualEntries={ritualEntries} />
+              morningAnchors={morningAnchors} sundayWitnesses={sundayWitnesses} ritualEntries={ritualEntries}
+              relationships={relationships} onNavigateToRelDetail={navigateToRelDetail} />
           )}
           {currentPage === PAGES.DAILY && (
             <DailyPage theme={theme} isMobile={isMobile}
@@ -3164,6 +3441,7 @@ export default function App() {
                 onBack={() => setRelSubPage({ type: 'list' })}
                 onNavigateToGauge={(relId) => setRelSubPage({ type: 'gauge', relationshipId: relId })}
                 onUpdateRelationship={updateRelationship}
+                showToast={showToast}
               />
             ) : relSubPage.type === 'gauge' ? (
               <DepthGaugePage
@@ -3185,6 +3463,8 @@ export default function App() {
               onChangeTheme={setThemeKey}
               onExportDaily={handleExportDaily}
               onImportDaily={handleImportDaily}
+              onExportRelationships={handleExportRelationships}
+              onImportRelationships={handleImportRelationships}
               isArtifactMode={isArtifactMode} />
           )}
         </div>
