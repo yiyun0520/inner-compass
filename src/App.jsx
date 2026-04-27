@@ -164,6 +164,8 @@ const Icon = ({ name, size = 16, color = 'currentColor', style = {} }) => {
     wind: <><path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/><path d="M9.6 4.6A2 2 0 1 1 11 8H2"/><path d="M12.6 19.4A2 2 0 1 0 14 16H2"/></>,
     cloudRain: <><line x1="16" y1="13" x2="16" y2="21"/><line x1="8" y1="13" x2="8" y2="21"/><line x1="12" y1="15" x2="12" y2="23"/><path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"/></>,
     zap: <><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></>,
+    send: <><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></>,
+    back: <><polyline points="15 18 9 12 15 6"/></>,
   };
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={style}>
@@ -2294,6 +2296,752 @@ function CouragePage({ theme, isMobile, smallCourages, onSave, onDelete, onEdit 
 }
 
 // ============================================================================
+// 關係支援頁 — 地面朋友 tab
+// ============================================================================
+
+function GroundFriendTab({ theme, isMobile, groundFriends, groundFriendCheckIns, relationships, onSaveFriend, onDeleteFriend, onSaveCheckIn }) {
+  const font = "'Noto Serif TC', serif";
+  const activeRels = relationships.filter(r => r.currentStage !== 'ended');
+  const [adding, setAdding] = useState(false);
+  const [editingFriendId, setEditingFriendId] = useState(null);
+  const [checkingInFriendId, setCheckingInFriendId] = useState(null);
+
+  const FriendForm = ({ friend, onSave, onCancel }) => {
+    const [codename, setCodename] = useState(friend?.codename || '');
+    const [role, setRole] = useState(friend?.role || '');
+    const [primaryRelId, setPrimaryRelId] = useState(friend?.isPrimaryForRelationshipId || '');
+    const iStyle = inputStyle(theme);
+    return (
+      <div style={{ ...cardStyle(theme), marginBottom: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 12, color: theme.t3, marginBottom: 6, fontFamily: font }}>代號（不用真名）</div>
+            <input value={codename} onChange={e => setCodename(e.target.value)} placeholder="例：月亮、K、小貓" style={{ ...iStyle, width: '100%' }} />
+          </div>
+          <div>
+            <div style={{ fontSize: 12, color: theme.t3, marginBottom: 6, fontFamily: font }}>他／她對你的意義</div>
+            <AutoTextarea value={role} onChange={e => setRole(e.target.value)} placeholder="例：讓我記得自己是誰的人" style={{ ...iStyle, width: '100%' }} minRows={2} />
+          </div>
+          {activeRels.length > 0 && (
+            <div>
+              <div style={{ fontSize: 12, color: theme.t3, marginBottom: 6, fontFamily: font }}>指派為哪段關係的地面朋友（選填）</div>
+              <select value={primaryRelId} onChange={e => setPrimaryRelId(e.target.value)} style={{ ...iStyle, width: '100%' }}>
+                <option value="">無指派</option>
+                {activeRels.map(r => <option key={r.id} value={r.id}>{r.codename}</option>)}
+              </select>
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button onClick={onCancel} style={btnSecondary(theme)}>取消</button>
+            <button onClick={() => {
+              if (!codename.trim()) return;
+              onSave({ id: friend?.id || genId(), codename: codename.trim(), role: role.trim(), lastContactDate: friend?.lastContactDate || null, isPrimaryForRelationshipId: primaryRelId || null });
+              onCancel();
+            }} style={btnPrimary(theme, !codename.trim())} disabled={!codename.trim()}>儲存</button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const CheckInForm = ({ friendId, onSave, onCancel }) => {
+    const [date, setDate] = useState(todayStr());
+    const [q1, setQ1] = useState('');
+    const [q2, setQ2] = useState('');
+    const [q3, setQ3] = useState('same');
+    const [notes, setNotes] = useState('');
+    const [relId, setRelId] = useState('');
+    const iStyle = inputStyle(theme);
+    return (
+      <div style={{ ...cardStyle(theme), marginBottom: 12 }}>
+        <div style={{ fontSize: 14, fontWeight: 500, color: theme.t1, marginBottom: 16, fontFamily: font }}>記錄新對話</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <div style={{ fontSize: 12, color: theme.t3, marginBottom: 6 }}>日期</div>
+            <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ ...iStyle, width: '100%' }} />
+          </div>
+          {activeRels.length > 0 && (
+            <div>
+              <div style={{ fontSize: 12, color: theme.t3, marginBottom: 6 }}>關於哪段關係（選填）</div>
+              <select value={relId} onChange={e => setRelId(e.target.value)} style={{ ...iStyle, width: '100%' }}>
+                <option value="">一般聊聊</option>
+                {activeRels.map(r => <option key={r.id} value={r.id}>{r.codename}</option>)}
+              </select>
+            </div>
+          )}
+          <div>
+            <div style={{ fontSize: 12, color: theme.t3, marginBottom: 6, fontStyle: 'italic' }}>你最近有沒有為他忽略自己什麼？</div>
+            <AutoTextarea value={q1} onChange={e => setQ1(e.target.value)} placeholder="具體說說看…" style={{ ...iStyle, width: '100%' }} minRows={2} />
+          </div>
+          <div>
+            <div style={{ fontSize: 12, color: theme.t3, marginBottom: 6, fontStyle: 'italic' }}>你覺得這段關係讓你變成什麼樣子？</div>
+            <AutoTextarea value={q2} onChange={e => setQ2(e.target.value)} placeholder="更靠近自己，還是更遠？" style={{ ...iStyle, width: '100%' }} minRows={2} />
+          </div>
+          <div>
+            <div style={{ fontSize: 12, color: theme.t3, marginBottom: 6, fontStyle: 'italic' }}>你現在有比開始時更像自己，還是更不像？</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {[{ v: 'more', label: '更像自己' }, { v: 'same', label: '差不多' }, { v: 'less', label: '更不像自己' }].map(opt => (
+                <button key={opt.v} onClick={() => setQ3(opt.v)} style={{
+                  flex: 1, padding: '8px 4px', borderRadius: 8, border: '0.5px solid ' + (q3 === opt.v ? theme.accent : theme.border),
+                  background: q3 === opt.v ? theme.accentLight : 'transparent', color: q3 === opt.v ? theme.accent : theme.t2,
+                  cursor: 'pointer', fontSize: 13, fontFamily: font, transition: 'all 150ms',
+                }}>{opt.label}</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 12, color: theme.t3, marginBottom: 6 }}>額外筆記（選填）</div>
+            <AutoTextarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="其他想記錄的…" style={{ ...iStyle, width: '100%' }} minRows={2} />
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button onClick={onCancel} style={btnSecondary(theme)}>取消</button>
+            <button onClick={() => {
+              onSave({ id: genId(), groundFriendId: friendId, relationshipId: relId || null, date, q1_ignoredSelf: q1.trim(), q2_becoming: q2.trim(), q3_moreOrLessSelf: q3, additionalNotes: notes.trim(), createdAt: Date.now() });
+              onCancel();
+            }} style={btnPrimary(theme, false)}>儲存</button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '20px 16px 80px' : '28px 24px 80px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <div>
+          <div style={{ fontSize: 18, fontWeight: 500, color: theme.t1, fontFamily: font }}>地面朋友</div>
+          <div style={{ fontSize: 12, color: theme.t3, marginTop: 4, fontFamily: font, fontStyle: 'italic' }}>讓你記得自己是誰的人</div>
+        </div>
+        {!adding && !editingFriendId && groundFriends.length < 3 && (
+          <button onClick={() => setAdding(true)} style={{ ...btnPrimary(theme, false), padding: '8px 16px', fontSize: 13 }}>新增朋友</button>
+        )}
+      </div>
+
+      {adding && <FriendForm friend={null} onSave={onSaveFriend} onCancel={() => setAdding(false)} />}
+
+      {groundFriends.length === 0 && !adding ? (
+        <div style={{ textAlign: 'center', padding: '48px 16px', color: theme.t3, fontFamily: font, fontStyle: 'italic' }}>
+          還沒有地面朋友。<br />最多可以新增三位。
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {groundFriends.map(friend => {
+            const daysSince = friend.lastContactDate ? daysDiff(friend.lastContactDate, todayStr()) : null;
+            const primaryRel = activeRels.find(r => r.id === friend.isPrimaryForRelationshipId);
+            return (
+              <div key={friend.id}>
+                {editingFriendId === friend.id && <FriendForm friend={friend} onSave={onSaveFriend} onCancel={() => setEditingFriendId(null)} />}
+                {checkingInFriendId === friend.id && <CheckInForm friendId={friend.id} onSave={(ci) => { onSaveCheckIn(ci); setCheckingInFriendId(null); }} onCancel={() => setCheckingInFriendId(null)} />}
+                {editingFriendId !== friend.id && checkingInFriendId !== friend.id && (
+                  <div style={{ ...cardStyle(theme) }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 16, fontWeight: 500, color: theme.t1, fontFamily: font }}>{friend.codename}</div>
+                        {friend.role && <div style={{ fontSize: 13, color: theme.t2, marginTop: 4, fontFamily: font, fontStyle: 'italic' }}>{friend.role}</div>}
+                        {primaryRel && <div style={{ fontSize: 11, color: theme.navy, marginTop: 6 }}>指定陪伴：{primaryRel.codename}</div>}
+                        <div style={{ fontSize: 12, color: theme.t3, marginTop: 8 }}>
+                          {daysSince === null ? '尚未記錄聯繫' : daysSince === 0 ? '今天聯繫過' : `上次聯繫 ${daysSince} 天前`}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button onClick={() => setEditingFriendId(friend.id)} style={{ background: 'transparent', border: 'none', color: theme.t3, cursor: 'pointer', padding: 6 }}>
+                          <Icon name="edit" size={15} />
+                        </button>
+                        <button onClick={() => onDeleteFriend(friend.id)} style={{ background: 'transparent', border: 'none', color: theme.t3, cursor: 'pointer', padding: 6 }}>
+                          <Icon name="trash" size={15} />
+                        </button>
+                      </div>
+                    </div>
+                    <button onClick={() => setCheckingInFriendId(friend.id)} style={{ ...btnPrimary(theme, false), marginTop: 14, width: '100%', fontSize: 13 }}>
+                      記錄新對話
+                    </button>
+                    {groundFriendCheckIns.filter(c => c.groundFriendId === friend.id).slice(0, 3).map(ci => (
+                      <div key={ci.id} style={{ marginTop: 12, paddingTop: 12, borderTop: '0.5px solid ' + theme.border }}>
+                        <div style={{ fontSize: 11, color: theme.t3, marginBottom: 4 }}>{formatDate(ci.date)}</div>
+                        {ci.q1_ignoredSelf && <div style={{ fontSize: 13, color: theme.t2, marginBottom: 4, fontStyle: 'italic' }}>「{ci.q1_ignoredSelf}」</div>}
+                        <div style={{ fontSize: 11, color: theme.t3 }}>{ci.q3_moreOrLessSelf === 'more' ? '更像自己' : ci.q3_moreOrLessSelf === 'less' ? '更不像自己' : '差不多'}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// 關係支援頁 — 辨識工具箱 tab
+// ============================================================================
+
+function IdentificationTab({ theme, isMobile, relationships, identificationAssessments, onSaveAssessment }) {
+  const font = "'Noto Serif TC', serif";
+  const activeRels = relationships.filter(r => r.currentStage !== 'ended');
+  const [view, setView] = useState('menu');
+  const [selectedRelId, setSelectedRelId] = useState(activeRels[0]?.id || '');
+
+  const FiveCheckForm = () => {
+    const items = [
+      { key: 'intellectualParity', label: '智識對等', hint: '對話能讓你有所收穫，不是一人輸出' },
+      { key: 'emotionalSafety', label: '情緒安全', hint: '你在他面前是放鬆的，不是刺激的' },
+      { key: 'valueAlignment', label: '價值觀契合', hint: '對重要的事有共同的判斷標準' },
+      { key: 'rhythmFit', label: '節奏匹配', hint: '生活步調和溝通頻率能配合' },
+      { key: 'futureVisibility', label: '未來可見性', hint: '能想像一起往前走的畫面' },
+    ];
+    const [scores, setScores] = useState({ intellectualParity: 3, emotionalSafety: 3, valueAlignment: 3, rhythmFit: 3, futureVisibility: 3 });
+    const [decision, setDecision] = useState('');
+    const total = Object.values(scores).reduce((a, b) => a + b, 0);
+    return (
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+          <button onClick={() => setView('menu')} style={{ background: 'transparent', border: 'none', color: theme.t2, cursor: 'pointer', padding: 4 }}>
+            <Icon name="back" size={18} />
+          </button>
+          <div style={{ fontSize: 16, fontWeight: 500, color: theme.t1, fontFamily: font }}>五項核對</div>
+        </div>
+        {activeRels.length > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            <select value={selectedRelId} onChange={e => setSelectedRelId(e.target.value)} style={{ ...inputStyle(theme), width: '100%' }}>
+              {activeRels.map(r => <option key={r.id} value={r.id}>{r.codename}</option>)}
+            </select>
+          </div>
+        )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 20 }}>
+          {items.map(item => (
+            <div key={item.key} style={{ ...cardStyle(theme) }}>
+              <div style={{ fontSize: 14, fontWeight: 500, color: theme.t1, fontFamily: font, marginBottom: 4 }}>{item.label}</div>
+              <div style={{ fontSize: 12, color: theme.t3, fontStyle: 'italic', marginBottom: 12 }}>{item.hint}</div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {[1, 2, 3, 4, 5].map(n => (
+                  <button key={n} onClick={() => setScores(s => ({ ...s, [item.key]: n }))} style={{
+                    flex: 1, padding: '10px 4px', borderRadius: 8,
+                    border: '0.5px solid ' + (scores[item.key] === n ? theme.accent : theme.border),
+                    background: scores[item.key] === n ? theme.accentLight : 'transparent',
+                    color: scores[item.key] === n ? theme.accent : theme.t3,
+                    cursor: 'pointer', fontSize: 14, fontWeight: scores[item.key] === n ? 500 : 400, transition: 'all 150ms',
+                  }}>{n}</button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{ ...cardStyle(theme), marginBottom: 16, textAlign: 'center' }}>
+          <div style={{ fontSize: 13, color: theme.t3, fontFamily: font }}>總分</div>
+          <div style={{ fontSize: 32, fontWeight: 500, color: total >= 18 ? theme.accent : total >= 12 ? theme.t1 : theme.coral, fontFamily: font, marginTop: 4 }}>{total} <span style={{ fontSize: 16, color: theme.t3 }}>/ 25</span></div>
+          <div style={{ fontSize: 12, color: theme.t3, marginTop: 8, fontStyle: 'italic' }}>{total >= 18 ? '土壤肥沃，可以繼續看。' : total >= 12 ? '有基礎，但有些地方需要留意。' : '土壤貧瘠，要誠實問自己為什麼還在。'}</div>
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 12, color: theme.t3, marginBottom: 8, fontFamily: font }}>你的結論（選填）</div>
+          <AutoTextarea value={decision} onChange={e => setDecision(e.target.value)} placeholder="此刻對這段關係的觀察…" style={{ ...inputStyle(theme), width: '100%' }} minRows={3} />
+        </div>
+        <button onClick={() => {
+          onSaveAssessment({ id: genId(), relationshipId: selectedRelId, date: todayStr(), ...scores, totalScore: total, dealBreakerCheck: { hasOther: false, needsToLowerSelf: false, sleepDisturbed: false }, decision: decision.trim(), createdAt: Date.now() });
+          setView('menu');
+        }} style={{ ...btnPrimary(theme, false), width: '100%' }}>儲存核對結果</button>
+      </div>
+    );
+  };
+
+  const DealBreakerForm = () => {
+    const [checks, setChecks] = useState({ hasOther: false, needsToLowerSelf: false, sleepDisturbed: false });
+    const anyChecked = Object.values(checks).some(Boolean);
+    const items = [
+      { key: 'hasOther', label: '他目前有其他關係（明確的）' },
+      { key: 'needsToLowerSelf', label: '在這段關係中，你需要降低自己才能被接受' },
+      { key: 'sleepDisturbed', label: '因為他，你的睡眠受到干擾超過一週' },
+    ];
+    return (
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+          <button onClick={() => setView('menu')} style={{ background: 'transparent', border: 'none', color: theme.t2, cursor: 'pointer', padding: 4 }}>
+            <Icon name="back" size={18} />
+          </button>
+          <div style={{ fontSize: 16, fontWeight: 500, color: theme.t1, fontFamily: font }}>三個 Deal Breaker</div>
+        </div>
+        <div style={{ ...cardStyle(theme), marginBottom: 16 }}>
+          <div style={{ fontSize: 12, color: theme.t3, fontStyle: 'italic', marginBottom: 16, lineHeight: 1.6 }}>這三件事任一成立，都值得停下來認真考慮。不是評判，是保護自己。</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {items.map(item => (
+              <label key={item.key} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, cursor: 'pointer' }}>
+                <input type="checkbox" checked={checks[item.key]} onChange={e => setChecks(s => ({ ...s, [item.key]: e.target.checked }))}
+                  style={{ marginTop: 2, width: 18, height: 18, accentColor: theme.coral, flexShrink: 0 }} />
+                <span style={{ fontSize: 14, color: theme.t1, fontFamily: font, lineHeight: 1.5 }}>{item.label}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+        {anyChecked && (
+          <div style={{ ...cardStyle(theme), background: theme.coral + '15', border: '0.5px solid ' + theme.coral, marginBottom: 16 }}>
+            <div style={{ fontSize: 14, color: theme.coral, fontFamily: font, lineHeight: 1.6 }}>有些事情，值得你認真對待。<br /><span style={{ fontSize: 12, color: theme.t2, fontStyle: 'italic' }}>也許是時候啟動「降低捲入度」。</span></div>
+          </div>
+        )}
+        {!anyChecked && (
+          <div style={{ textAlign: 'center', padding: 16, color: theme.t3, fontSize: 13, fontStyle: 'italic', fontFamily: font }}>目前沒有明確的 deal breaker。繼續見證自己。</div>
+        )}
+      </div>
+    );
+  };
+
+  if (view === 'fiveCheck') return <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '20px 16px 80px' : '28px 24px 80px' }}><FiveCheckForm /></div>;
+  if (view === 'dealBreaker') return <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '20px 16px 80px' : '28px 24px 80px' }}><DealBreakerForm /></div>;
+
+  return (
+    <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '20px 16px 80px' : '28px 24px 80px' }}>
+      <div style={{ fontSize: 18, fontWeight: 500, color: theme.t1, fontFamily: font, marginBottom: 6 }}>辨識工具箱</div>
+      <div style={{ fontSize: 12, color: theme.t3, fontStyle: 'italic', marginBottom: 24, fontFamily: font }}>在看清楚之前，先不要做決定</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 28 }}>
+        {[
+          { key: 'fiveCheck', title: '五項核對', desc: '從智識、情緒、價值觀、節奏、未來五個維度評分', icon: 'check' },
+          { key: 'dealBreaker', title: '三個 Deal Breaker', desc: '任一成立都需要認真對待', icon: 'zap' },
+        ].map(item => (
+          <button key={item.key} onClick={() => setView(item.key)} style={{
+            ...cardStyle(theme), display: 'flex', alignItems: 'center', gap: 14,
+            cursor: 'pointer', border: '0.5px solid ' + theme.border, textAlign: 'left', transition: 'border-color 150ms', padding: '16px 20px',
+          }}
+          onMouseEnter={e => e.currentTarget.style.borderColor = theme.borderHover}
+          onMouseLeave={e => e.currentTarget.style.borderColor = theme.border}>
+            <Icon name={item.icon} size={20} color={theme.accent} />
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 500, color: theme.t1, fontFamily: font }}>{item.title}</div>
+              <div style={{ fontSize: 12, color: theme.t3, marginTop: 3, fontStyle: 'italic' }}>{item.desc}</div>
+            </div>
+          </button>
+        ))}
+      </div>
+      {identificationAssessments.slice(0, 3).map(a => {
+        const rel = relationships.find(r => r.id === a.relationshipId);
+        return (
+          <div key={a.id} style={{ ...cardStyle(theme), marginBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontSize: 13, color: theme.t1, fontFamily: font }}>{rel?.codename || '—'}</div>
+              <div style={{ fontSize: 11, color: theme.t3 }}>{formatDate(a.date)}</div>
+            </div>
+            <div style={{ fontSize: 20, fontWeight: 500, color: theme.accent, marginTop: 6, fontFamily: font }}>{a.totalScore} <span style={{ fontSize: 12, color: theme.t3 }}>/ 25</span></div>
+            {a.decision && <div style={{ fontSize: 12, color: theme.t2, marginTop: 6, fontStyle: 'italic' }}>{a.decision}</div>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ============================================================================
+// 關係支援頁 — 降低捲入度 tab
+// ============================================================================
+
+function LoweringTab({ theme, isMobile, relationships, loweringProtocols, onSaveProtocol }) {
+  const font = "'Noto Serif TC', serif";
+  const activeRels = relationships.filter(r => r.currentStage !== 'ended');
+  const [selectedRelId, setSelectedRelId] = useState(activeRels[0]?.id || '');
+  const activeProtocol = loweringProtocols.find(p => p.relationshipId === selectedRelId && !p.completedDate);
+  const suggest14Day = activeProtocol && daysDiff(activeProtocol.startDate, todayStr()) >= 14;
+  const checklistItems = [
+    { key: 'reducedMeetingFrequency', label: '減少見面頻率（不是消失，是調整節奏）' },
+    { key: 'delayedResponses', label: '練習延遲回覆（10 分鐘後再看訊息）' },
+    { key: 'morningAnchor7Days', label: '連續 7 天完成晨間錨點' },
+    { key: 'completedSundayWitness', label: '完成本週的週日自我見證' },
+    { key: 'groundFriendContact', label: '聯繫地面朋友聊了這段關係' },
+    { key: 'longSoloActivity', label: '進行一個超過 2 小時的獨處活動' },
+  ];
+  const handleToggle = (key) => {
+    if (!activeProtocol) return;
+    const updated = { ...activeProtocol, checklist: { ...activeProtocol.checklist, [key]: !activeProtocol.checklist[key] } };
+    if (checklistItems.every(item => updated.checklist[item.key])) updated.completedDate = todayStr();
+    onSaveProtocol(updated);
+  };
+  return (
+    <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '20px 16px 80px' : '28px 24px 80px' }}>
+      <div style={{ fontSize: 18, fontWeight: 500, color: theme.t1, fontFamily: font, marginBottom: 6 }}>降低捲入度</div>
+      <div style={{ fontSize: 12, color: theme.t3, fontStyle: 'italic', marginBottom: 20, fontFamily: font }}>不是懲罰，是保護自己的空間</div>
+      <div style={{ ...cardStyle(theme), marginBottom: 16, background: theme.accent + '08' }}>
+        <div style={{ fontSize: 12, color: theme.t2, lineHeight: 1.7, fontFamily: font, fontStyle: 'italic' }}>
+          不要告訴他你在做這個。<br />這不是懲罰，也不是測試。<br />這是你給自己的保護空間。
+        </div>
+      </div>
+      {activeRels.length > 1 && (
+        <div style={{ marginBottom: 16 }}>
+          <select value={selectedRelId} onChange={e => setSelectedRelId(e.target.value)} style={{ ...inputStyle(theme), width: '100%' }}>
+            {activeRels.map(r => <option key={r.id} value={r.id}>{r.codename}</option>)}
+          </select>
+        </div>
+      )}
+      {suggest14Day && (
+        <div style={{ ...cardStyle(theme), background: theme.coral + '12', border: '0.5px solid ' + theme.coral, marginBottom: 16 }}>
+          <div style={{ fontSize: 13, color: theme.coral, fontFamily: font }}>已啟動 14 天。<br /><span style={{ fontSize: 12, fontStyle: 'italic' }}>現在可以再測一次暈船量表，看看有沒有變化。</span></div>
+        </div>
+      )}
+      {activeProtocol ? (
+        <div>
+          <div style={{ fontSize: 13, color: theme.t3, marginBottom: 14 }}>啟動於 {formatDate(activeProtocol.startDate)}・已第 {daysDiff(activeProtocol.startDate, todayStr())} 天</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {checklistItems.map(item => (
+              <label key={item.key} onClick={() => handleToggle(item.key)} style={{ display: 'flex', alignItems: 'flex-start', gap: 14, ...cardStyle(theme), cursor: 'pointer', padding: '14px 16px' }}>
+                <div style={{
+                  width: 22, height: 22, borderRadius: 6, flexShrink: 0, marginTop: 1,
+                  border: '1.5px solid ' + (activeProtocol.checklist[item.key] ? theme.accent : theme.border),
+                  background: activeProtocol.checklist[item.key] ? theme.accent : 'transparent',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 200ms',
+                }}>
+                  {activeProtocol.checklist[item.key] && <Icon name="check" size={13} color={theme.accentText} />}
+                </div>
+                <span style={{ fontSize: 14, color: activeProtocol.checklist[item.key] ? theme.t3 : theme.t1, fontFamily: font, lineHeight: 1.5, textDecoration: activeProtocol.checklist[item.key] ? 'line-through' : 'none' }}>
+                  {item.label}
+                </span>
+              </label>
+            ))}
+          </div>
+          {activeProtocol.completedDate && (
+            <div style={{ textAlign: 'center', padding: '24px 16px', color: theme.accent, fontSize: 15, fontFamily: font, fontStyle: 'italic' }}>全部完成了。你做到了。</div>
+          )}
+        </div>
+      ) : (
+        <div style={{ textAlign: 'center', padding: '32px 16px' }}>
+          <div style={{ fontSize: 14, color: theme.t2, fontFamily: font, fontStyle: 'italic', marginBottom: 20, lineHeight: 1.7 }}>當你覺得自己捲入太深，<br />這裡有六件事可以做。</div>
+          <button onClick={() => {
+            if (!selectedRelId && activeRels.length === 0) return;
+            const relId = selectedRelId || activeRels[0]?.id || '';
+            onSaveProtocol({ id: genId(), relationshipId: relId, startDate: todayStr(), checklist: { reducedMeetingFrequency: false, delayedResponses: false, morningAnchor7Days: false, completedSundayWitness: false, groundFriendContact: false, longSoloActivity: false }, completedDate: null, createdAt: Date.now() });
+          }} style={{ ...btnPrimary(theme, false), padding: '12px 32px' }}>啟動</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// 關係支援頁 — 10% 開放標記 tab
+// ============================================================================
+
+function OpenMarkTab({ theme, isMobile, openMarks, relationships, onSaveMark }) {
+  const font = "'Noto Serif TC', serif";
+  const [adding, setAdding] = useState(false);
+  const [addingObsId, setAddingObsId] = useState(null);
+  const [obsText, setObsText] = useState('');
+  const [newCodename, setNewCodename] = useState('');
+  const [newStart, setNewStart] = useState(todayStr());
+  const addDays = (dateStr, n) => { const d = new Date(dateStr); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+  const pending = openMarks.filter(m => m.decision === 'pending');
+  const decided = openMarks.filter(m => m.decision !== 'pending');
+  return (
+    <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '20px 16px 80px' : '28px 24px 80px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+        <div>
+          <div style={{ fontSize: 18, fontWeight: 500, color: theme.t1, fontFamily: font }}>10% 開放標記</div>
+          <div style={{ fontSize: 12, color: theme.t3, fontStyle: 'italic', marginTop: 4, fontFamily: font }}>觀察，在決定之前</div>
+        </div>
+        {!adding && <button onClick={() => setAdding(true)} style={{ ...btnPrimary(theme, false), padding: '8px 16px', fontSize: 13 }}>新增標記</button>}
+      </div>
+      {adding && (
+        <div style={{ ...cardStyle(theme), marginBottom: 16 }}>
+          <div style={{ fontSize: 14, fontWeight: 500, color: theme.t1, marginBottom: 14, fontFamily: font }}>新增觀察對象</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <div style={{ fontSize: 12, color: theme.t3, marginBottom: 6 }}>代號</div>
+              <input value={newCodename} onChange={e => setNewCodename(e.target.value)} placeholder="例：秋天、J" style={{ ...inputStyle(theme), width: '100%' }} />
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: theme.t3, marginBottom: 6 }}>開始日期</div>
+              <input type="date" value={newStart} onChange={e => setNewStart(e.target.value)} style={{ ...inputStyle(theme), width: '100%' }} />
+            </div>
+            <div style={{ fontSize: 12, color: theme.t3, fontStyle: 'italic' }}>結束日期自動設為 14 天後：{formatDate(addDays(newStart, 14))}</div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => setAdding(false)} style={btnSecondary(theme)}>取消</button>
+              <button onClick={() => {
+                if (!newCodename.trim()) return;
+                onSaveMark({ id: genId(), codename: newCodename.trim(), openStartDate: newStart, openEndDate: addDays(newStart, 14), observations: [], decision: 'pending', createdAt: Date.now() });
+                setAdding(false); setNewCodename(''); setNewStart(todayStr());
+              }} style={btnPrimary(theme, !newCodename.trim())} disabled={!newCodename.trim()}>新增</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {pending.length === 0 && !adding && (
+        <div style={{ textAlign: 'center', padding: '48px 16px', color: theme.t3, fontFamily: font, fontStyle: 'italic' }}>目前沒有進行中的觀察標記。</div>
+      )}
+      {pending.map(mark => {
+        const daysLeft = daysDiff(todayStr(), mark.openEndDate);
+        return (
+          <div key={mark.id} style={{ ...cardStyle(theme), marginBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 500, color: theme.t1, fontFamily: font }}>{mark.codename}</div>
+                <div style={{ fontSize: 12, color: theme.t3, marginTop: 4 }}>{formatDate(mark.openStartDate)} → {formatDate(mark.openEndDate)}</div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                {daysLeft < 0 ? <div style={{ fontSize: 12, color: theme.coral, fontWeight: 500 }}>已到期，做決定</div>
+                  : daysLeft === 0 ? <div style={{ fontSize: 12, color: theme.coral }}>今日到期</div>
+                  : <div style={{ fontSize: 13, color: theme.accent, fontWeight: 500 }}>剩 {daysLeft} 天</div>}
+              </div>
+            </div>
+            {daysLeft <= 0 && (
+              <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                <button onClick={() => onSaveMark({ ...mark, decision: 'track' })} style={{ ...btnPrimary(theme, false), flex: 1, fontSize: 13 }}>轉為追蹤</button>
+                <button onClick={() => onSaveMark({ ...mark, decision: 'release' })} style={{ ...btnSecondary(theme), flex: 1, fontSize: 13 }}>放下</button>
+              </div>
+            )}
+            <div style={{ fontSize: 12, color: theme.t3, marginBottom: 8 }}>觀察紀錄（{mark.observations.length} 則）</div>
+            {addingObsId === mark.id ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <AutoTextarea value={obsText} onChange={e => setObsText(e.target.value)} placeholder="今天觀察到什麼…" style={{ ...inputStyle(theme), width: '100%' }} minRows={2} />
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                  <button onClick={() => { setAddingObsId(null); setObsText(''); }} style={btnSecondary(theme)}>取消</button>
+                  <button onClick={() => {
+                    if (!obsText.trim()) return;
+                    onSaveMark({ ...mark, observations: [...mark.observations, { date: todayStr(), content: obsText.trim() }] });
+                    setAddingObsId(null); setObsText('');
+                  }} style={btnPrimary(theme, !obsText.trim())} disabled={!obsText.trim()}>記錄</button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => setAddingObsId(mark.id)} style={{ ...btnSecondary(theme), width: '100%', fontSize: 13 }}>新增觀察</button>
+            )}
+            {mark.observations.slice(-3).reverse().map((obs, i) => (
+              <div key={i} style={{ marginTop: 10, paddingTop: 10, borderTop: '0.5px solid ' + theme.border }}>
+                <div style={{ fontSize: 11, color: theme.t3, marginBottom: 4 }}>{formatDate(obs.date)}</div>
+                <div style={{ fontSize: 13, color: theme.t2, fontStyle: 'italic' }}>{obs.content}</div>
+              </div>
+            ))}
+          </div>
+        );
+      })}
+      {decided.length > 0 && (
+        <div style={{ marginTop: 24 }}>
+          <div style={{ fontSize: 13, color: theme.t3, marginBottom: 10, fontFamily: font }}>過去的標記</div>
+          {decided.map(mark => (
+            <div key={mark.id} style={{ ...cardStyle(theme), marginBottom: 8, opacity: 0.7 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div style={{ fontSize: 14, color: theme.t1, fontFamily: font }}>{mark.codename}</div>
+                <div style={{ fontSize: 12, color: mark.decision === 'track' ? theme.accent : theme.t3 }}>{mark.decision === 'track' ? '轉為追蹤' : '放下'}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// 關係支援頁 — AI 陪問員 tab
+// ============================================================================
+
+const RAMAN_SYSTEM_PROMPT = (codename, groundFriendCodename) => `你是 Raman。你是這個使用者（她的名字是 Mio）內在的一個智慧聲音。
+
+你的語氣：
+- 溫柔，有絲底線
+- 不說教，但會誠實
+- 不會跟她一起幻想，不會附和她想聽的話
+- 會輕輕地指出她沒看見的自己
+- 用「孩子」這個稱呼（她接受這個稱呼）
+- 偶爾用安靜的停頓，給她空間
+
+你的任務：扮演她的「地面朋友」補位。你會問三個問題（按順序，不要一次問完）：
+1. 你最近有沒有為他忽略自己什麼？
+2. 你覺得這段關係讓你變成什麼樣子？
+3. 你現在有比開始時更像自己，還是更不像？
+
+規則：
+- 一次只問一個，等她回答
+- 她的回答如果在迴避或自圓其說，溫柔地再問一次
+- 第三題她回答後，給她一段結語
+- 結尾永遠提醒她：記得也要約真人朋友 ${groundFriendCodename || '身邊的朋友'} 聊聊
+- 永遠不說「我懂你」這種廉價的共感，你不懂，你只是陪她看
+
+她正在追蹤的關係代號：${codename || '（未指定）'}
+她的地面朋友真人代號：${groundFriendCodename || '（未指定）'}`;
+
+function AICompanionTab({ theme, isMobile, relationships, groundFriends, aiCompanionSessions, onSaveSession }) {
+  const font = "'Noto Serif TC', serif";
+  const activeRel = relationships.find(r => r.currentStage !== 'ended' && r.currentStage !== 'paused');
+  const primaryFriend = groundFriends.find(f => f.isPrimaryForRelationshipId === activeRel?.id) || groundFriends[0];
+  const daysSinceFriend = primaryFriend?.lastContactDate ? daysDiff(primaryFriend.lastContactDate, todayStr()) : null;
+  const [phase, setPhase] = useState(primaryFriend ? 'gate' : 'chat');
+  const [messages, setMessages] = useState([]);
+  const [inputText, setInputText] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState(false);
+  const [isDone, setIsDone] = useState(false);
+  const [sessionId] = useState(genId);
+  const [sessionSaved, setSessionSaved] = useState(false);
+  const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    if (messagesEndRef.current) messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const callRaman = async (convMessages) => {
+    setIsLoading(true);
+    setApiError(false);
+    try {
+      const res = await fetch('/.netlify/functions/claude', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ systemPrompt: RAMAN_SYSTEM_PROMPT(activeRel?.codename, primaryFriend?.codename), messages: convMessages }),
+      });
+      if (!res.ok) throw new Error('failed');
+      const data = await res.json();
+      const assistantMsg = { role: 'assistant', content: data.content };
+      setMessages(prev => [...prev, assistantMsg]);
+      if (convMessages.length >= 6) setIsDone(true);
+    } catch {
+      setApiError(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const startChat = () => {
+    setPhase('chat');
+    callRaman([]);
+  };
+
+  const sendMessage = async () => {
+    if (!inputText.trim() || isLoading) return;
+    const userMsg = { role: 'user', content: inputText.trim() };
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
+    setInputText('');
+    callRaman(newMessages);
+  };
+
+  const handleSaveSession = () => {
+    onSaveSession({ id: sessionId, relationshipId: activeRel?.id || null, triggerContext: 'manual', conversation: messages, createdAt: Date.now() });
+    setSessionSaved(true);
+  };
+
+  if (phase === 'gate') {
+    return (
+      <div style={{ maxWidth: 560, margin: '0 auto', padding: isMobile ? '40px 16px 80px' : '60px 24px 80px', textAlign: 'center' }}>
+        <div style={{ fontSize: 13, color: theme.t3, fontFamily: font, fontStyle: 'italic', marginBottom: 32, lineHeight: 1.9 }}>
+          {daysSinceFriend !== null
+            ? <>你上次跟 <span style={{ color: theme.t1, fontWeight: 500 }}>{primaryFriend.codename}</span> 對話是 <span style={{ color: theme.accent }}>{daysSinceFriend}</span> 天前。<br />要先約他聊聊嗎？</>
+            : <>你有地面朋友 <span style={{ color: theme.t1, fontWeight: 500 }}>{primaryFriend.codename}</span>。<br />要先約他聊聊嗎？</>}
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 260, margin: '0 auto' }}>
+          <button onClick={() => setPhase('gate-done')} style={{ ...btnPrimary(theme, false), padding: '12px 24px' }}>好，先約他</button>
+          <button onClick={startChat} style={{ ...btnSecondary(theme), padding: '12px 24px' }}>還是現在跟 Raman 聊</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (phase === 'gate-done') {
+    return (
+      <div style={{ maxWidth: 560, margin: '0 auto', padding: isMobile ? '40px 16px' : '60px 24px', textAlign: 'center' }}>
+        <div style={{ fontSize: 14, color: theme.t2, fontFamily: font, fontStyle: 'italic', lineHeight: 1.9 }}>
+          好。先去約 {primaryFriend?.codename || '他'} 聊聊吧。<br />
+          <span style={{ fontSize: 12, color: theme.t3 }}>Raman 隨時在這裡。</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: isMobile ? 'calc(100dvh - 112px)' : 'calc(100dvh - 80px)' }}>
+      <div style={{ padding: '14px 20px', borderBottom: '0.5px solid ' + theme.border, display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+        <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
+          <circle cx="15" cy="15" r="14" stroke={theme.accent} strokeWidth="0.8" fill={theme.accentLight} />
+          <path d="M19 9 Q15 15 19 21 Q10 19 10 15 Q10 11 19 9Z" fill={theme.accent} opacity="0.55" />
+        </svg>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 14, fontWeight: 500, color: theme.t1, fontFamily: font }}>Raman</div>
+          <div style={{ fontSize: 11, color: theme.t3, fontStyle: 'italic' }}>你內在的智慧聲音</div>
+        </div>
+        {isDone && !sessionSaved && (
+          <button onClick={handleSaveSession} style={{ ...btnSecondary(theme), fontSize: 12, padding: '6px 14px' }}>儲存對話</button>
+        )}
+        {sessionSaved && <div style={{ fontSize: 12, color: theme.t3, fontStyle: 'italic' }}>已儲存</div>}
+      </div>
+      <div style={{ flex: 1, overflow: 'auto', padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {messages.length === 0 && !isLoading && !apiError && (
+          <div style={{ textAlign: 'center', color: theme.t3, fontSize: 13, fontStyle: 'italic', fontFamily: font, marginTop: 40 }}>正在連接 Raman…</div>
+        )}
+        {messages.map((msg, i) => (
+          <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+            <div style={{
+              maxWidth: '80%', padding: '12px 16px',
+              borderRadius: msg.role === 'user' ? '12px 12px 4px 12px' : '12px 12px 12px 4px',
+              background: msg.role === 'user' ? theme.accent : theme.bgCard,
+              color: msg.role === 'user' ? theme.accentText : theme.t1,
+              border: msg.role === 'assistant' ? '0.5px solid ' + theme.border : 'none',
+              fontSize: 14, lineHeight: 1.75, fontFamily: font, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+            }}>
+              {msg.content}
+            </div>
+          </div>
+        ))}
+        {isLoading && (
+          <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+            <div style={{ padding: '12px 16px', borderRadius: '12px 12px 12px 4px', background: theme.bgCard, border: '0.5px solid ' + theme.border }}>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {[0, 1, 2].map(i => <div key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: theme.t3, animation: `pulseDot 1.2s ease-in-out ${i * 0.2}s infinite` }} />)}
+              </div>
+            </div>
+          </div>
+        )}
+        {apiError && <div style={{ textAlign: 'center', padding: 16, color: theme.t3, fontSize: 13, fontStyle: 'italic', fontFamily: font }}>Raman 暫時沉默，要不要改天再來？</div>}
+        <div ref={messagesEndRef} />
+      </div>
+      {!isDone && (
+        <div style={{ padding: '12px 16px', borderTop: '0.5px solid ' + theme.border, display: 'flex', gap: 10, alignItems: 'flex-end', flexShrink: 0 }}>
+          <AutoTextarea value={inputText} onChange={e => setInputText(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+            placeholder="說說你的想法…"
+            style={{ ...inputStyle(theme), flex: 1, minHeight: 44, maxHeight: 120, fontSize: 14 }} minRows={1} />
+          <button onClick={sendMessage} disabled={!inputText.trim() || isLoading}
+            style={{ ...btnPrimary(theme, !inputText.trim() || isLoading), padding: '10px 16px', flexShrink: 0, minHeight: 44 }}>
+            <Icon name="send" size={16} color={theme.accentText} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// 關係支援頁（5-tab 主容器）
+// ============================================================================
+
+function RelationshipSupportPage({ theme, isMobile, relationships, groundFriends, groundFriendCheckIns, openMarks, identificationAssessments, loweringProtocols, depthGauges, aiCompanionSessions, onSaveFriend, onDeleteFriend, onSaveCheckIn, onSaveMark, onSaveAssessment, onSaveProtocol, onSaveSession }) {
+  const font = "'Noto Serif TC', serif";
+  const tabs = [
+    { id: 'ground', label: '地面朋友' },
+    { id: 'identify', label: '辨識工具箱' },
+    { id: 'lower', label: '降低捲入度' },
+    { id: 'open', label: '開放標記' },
+    { id: 'ai', label: 'AI 陪問員' },
+  ];
+  const [activeTab, setActiveTab] = useState('ground');
+  const isAI = activeTab === 'ai';
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: isAI ? (isMobile ? 'calc(100dvh - 56px)' : '100dvh') : 'auto', minHeight: isAI ? undefined : 'auto' }}>
+      <div style={{ display: 'flex', overflowX: 'auto', borderBottom: '0.5px solid ' + theme.border, background: theme.bg, flexShrink: 0 }}>
+        {tabs.map(tab => (
+          <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
+            padding: '13px 16px', background: 'transparent', border: 'none', cursor: 'pointer',
+            color: activeTab === tab.id ? theme.accent : theme.t3, fontFamily: font, fontSize: 13,
+            whiteSpace: 'nowrap', flexShrink: 0,
+            borderBottom: activeTab === tab.id ? '2px solid ' + theme.accent : '2px solid transparent',
+            transition: 'all 150ms',
+          }}>{tab.label}</button>
+        ))}
+      </div>
+      <div style={{ flex: 1, overflow: isAI ? 'hidden' : 'auto' }}>
+        {activeTab === 'ground' && <GroundFriendTab theme={theme} isMobile={isMobile} groundFriends={groundFriends} groundFriendCheckIns={groundFriendCheckIns} relationships={relationships} onSaveFriend={onSaveFriend} onDeleteFriend={onDeleteFriend} onSaveCheckIn={onSaveCheckIn} />}
+        {activeTab === 'identify' && <IdentificationTab theme={theme} isMobile={isMobile} relationships={relationships} identificationAssessments={identificationAssessments} onSaveAssessment={onSaveAssessment} />}
+        {activeTab === 'lower' && <LoweringTab theme={theme} isMobile={isMobile} relationships={relationships} loweringProtocols={loweringProtocols} onSaveProtocol={onSaveProtocol} />}
+        {activeTab === 'open' && <OpenMarkTab theme={theme} isMobile={isMobile} openMarks={openMarks} relationships={relationships} onSaveMark={onSaveMark} />}
+        {activeTab === 'ai' && <AICompanionTab theme={theme} isMobile={isMobile} relationships={relationships} groundFriends={groundFriends} aiCompanionSessions={aiCompanionSessions} onSaveSession={onSaveSession} />}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
 // 佔位頁面
 // ============================================================================
 
@@ -3151,8 +3899,32 @@ export default function App() {
   const [depthGauges, setDepthGauges] = useState(() => {
     try { return JSON.parse(localStorage.getItem(lsKey('depthGauges')) || '[]'); } catch { return []; }
   });
+  const [groundFriends, setGroundFriends] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(lsKey('groundFriends')) || '[]'); } catch { return []; }
+  });
+  const [groundFriendCheckIns, setGroundFriendCheckIns] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(lsKey('groundFriendCheckIns')) || '[]'); } catch { return []; }
+  });
+  const [openMarks, setOpenMarks] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(lsKey('openMarks')) || '[]'); } catch { return []; }
+  });
+  const [identificationAssessments, setIdentificationAssessments] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(lsKey('identificationAssessments')) || '[]'); } catch { return []; }
+  });
+  const [loweringProtocols, setLoweringProtocols] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(lsKey('loweringProtocols')) || '[]'); } catch { return []; }
+  });
+  const [aiCompanionSessions, setAiCompanionSessions] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(lsKey('aiCompanionSessions')) || '[]'); } catch { return []; }
+  });
   useEffect(() => { localStorage.setItem(lsKey('relationships'), JSON.stringify(relationships)); }, [relationships]);
   useEffect(() => { localStorage.setItem(lsKey('depthGauges'), JSON.stringify(depthGauges)); }, [depthGauges]);
+  useEffect(() => { localStorage.setItem(lsKey('groundFriends'), JSON.stringify(groundFriends)); }, [groundFriends]);
+  useEffect(() => { localStorage.setItem(lsKey('groundFriendCheckIns'), JSON.stringify(groundFriendCheckIns)); }, [groundFriendCheckIns]);
+  useEffect(() => { localStorage.setItem(lsKey('openMarks'), JSON.stringify(openMarks)); }, [openMarks]);
+  useEffect(() => { localStorage.setItem(lsKey('identificationAssessments'), JSON.stringify(identificationAssessments)); }, [identificationAssessments]);
+  useEffect(() => { localStorage.setItem(lsKey('loweringProtocols'), JSON.stringify(loweringProtocols)); }, [loweringProtocols]);
+  useEffect(() => { localStorage.setItem(lsKey('aiCompanionSessions'), JSON.stringify(aiCompanionSessions)); }, [aiCompanionSessions]);
 
   // Toast
   const [toasts, setToasts] = useState([]);
@@ -3270,6 +4042,50 @@ export default function App() {
     setDepthGauges(prev => [gauge, ...prev]);
     showToast('neutral', '量表已記錄。');
   }, [showToast]);
+
+  // ---- 關係支援資料操作 ----
+  const saveGroundFriend = useCallback((friend) => {
+    setGroundFriends(prev => {
+      const idx = prev.findIndex(f => f.id === friend.id);
+      return idx >= 0 ? prev.map((f, i) => i === idx ? friend : f) : [friend, ...prev];
+    });
+  }, []);
+
+  const deleteGroundFriend = useCallback((id) => {
+    setGroundFriends(prev => prev.filter(f => f.id !== id));
+    setGroundFriendCheckIns(prev => prev.filter(c => c.groundFriendId !== id));
+  }, []);
+
+  const saveGroundFriendCheckIn = useCallback((checkIn) => {
+    setGroundFriendCheckIns(prev => [checkIn, ...prev]);
+    setGroundFriends(prev => prev.map(f =>
+      f.id === checkIn.groundFriendId ? { ...f, lastContactDate: checkIn.date } : f
+    ));
+    showToast('neutral', '對話已記錄。');
+  }, [showToast]);
+
+  const saveOpenMark = useCallback((mark) => {
+    setOpenMarks(prev => {
+      const idx = prev.findIndex(m => m.id === mark.id);
+      return idx >= 0 ? prev.map((m, i) => i === idx ? mark : m) : [mark, ...prev];
+    });
+  }, []);
+
+  const saveIdentificationAssessment = useCallback((assessment) => {
+    setIdentificationAssessments(prev => [assessment, ...prev]);
+    showToast('neutral', '核對已儲存。');
+  }, [showToast]);
+
+  const saveLoweringProtocol = useCallback((protocol) => {
+    setLoweringProtocols(prev => {
+      const idx = prev.findIndex(p => p.id === protocol.id);
+      return idx >= 0 ? prev.map((p, i) => i === idx ? protocol : p) : [protocol, ...prev];
+    });
+  }, []);
+
+  const saveAiSession = useCallback((session) => {
+    setAiCompanionSessions(prev => [session, ...prev]);
+  }, []);
 
   // ---- 匯出 ----
   const handleExportDaily = useCallback(() => {
@@ -3453,7 +4269,24 @@ export default function App() {
             ) : null
           )}
           {currentPage === PAGES.SUPPORT && (
-            <PlaceholderPage title="關係支援" theme={theme} isMobile={isMobile} message="批次 B 預計實作 AI 陪問員、地面朋友、辨識工具箱。" />
+            <RelationshipSupportPage
+              theme={theme} isMobile={isMobile}
+              relationships={relationships}
+              groundFriends={groundFriends}
+              groundFriendCheckIns={groundFriendCheckIns}
+              openMarks={openMarks}
+              identificationAssessments={identificationAssessments}
+              loweringProtocols={loweringProtocols}
+              depthGauges={depthGauges}
+              aiCompanionSessions={aiCompanionSessions}
+              onSaveFriend={saveGroundFriend}
+              onDeleteFriend={deleteGroundFriend}
+              onSaveCheckIn={saveGroundFriendCheckIn}
+              onSaveMark={saveOpenMark}
+              onSaveAssessment={saveIdentificationAssessment}
+              onSaveProtocol={saveLoweringProtocol}
+              onSaveSession={saveAiSession}
+            />
           )}
           {currentPage === PAGES.REVIEW && (
             <PlaceholderPage title="回顧" theme={theme} isMobile={isMobile} message="批次 C 預計實作季度回顧與年度卷軸。" />
