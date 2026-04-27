@@ -9,8 +9,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
-  "dependencies": {
+"dependencies": {
     "@anthropic-ai/sdk": "^0.91.1"
   }
 }
