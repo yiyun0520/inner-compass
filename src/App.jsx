@@ -3,12 +3,12 @@ import { useAuth } from './useAuth';
 import { useSync } from './useSync';
 
 // ============================================================================
-// Inner Compass v1.8
+// Inner Compass v2.0
 // 單人使用・中文介面・儀式感自我探索工具
 // ============================================================================
 
 const TOOL_CODE = 'inner-compass';
-const TOOL_VERSION = '1.8';
+const TOOL_VERSION = '2.0';
 const CURRENT_DATA_VERSION = 1;
 const lsKey = (key) => 'ic-v1-' + key;
 
@@ -106,6 +106,12 @@ function formatDateShort(dateStr) {
   if (!dateStr) return '';
   const d = new Date(dateStr + 'T00:00:00');
   return (d.getMonth() + 1) + '/' + d.getDate();
+}
+
+function formatDateMD(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  return (d.getMonth() + 1) + '月' + d.getDate() + '日';
 }
 
 function daysDiff(dateStr1, dateStr2) {
@@ -981,8 +987,8 @@ function MorningAnchorRow({ entry, theme, isTouch, onSave, onDelete }) {
               <div style={{ fontSize: 14, color: theme.t1, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{entry.allowIntent}</div>
             </div>
           )}
-          {confirmDelete && (
-            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+          {confirmDelete && 
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 10 }}>
               <button onClick={() => setConfirmDelete(false)} style={btnSecondary(theme)}>取消</button>
               <button onClick={() => onDelete(entry.id)} style={{
                 background: theme.coral, color: '#FFF', border: 'none', borderRadius: 20,
@@ -1838,8 +1844,8 @@ function DailyPage({ theme, isMobile, initialTab, morningAnchors, sundayWitnesse
   ];
 
   const purposeMap = {
-    morning: `在一天的喧鬧開始之前，先回到自己這裡。\n\n不是為了計畫，而是為了看見此刻的你——你現在是什麼狀態？你想保護什麼不被今天消耗掉？你願意允許什麼發生？\n\n心態：不評判，不期待。哪怕只有一句話，也算到了。`,
-    witness: `每週給自己 30 分鐘，見證這一週真實活過的樣子。\n\n不評分，不比較，不要問「這週夠好嗎？」——只是陪著自己好好看見：做得好的具體小事、這週看見的自己、值得感謝自己的地方、以及這週的情緒天氣。\n\n心態：你是自己的見證人，不是審判者。見證本身就是療癒。`,
+    morning: `在一天的喧鬧開始之前，先回到自己這裡。\n\n不是為了計畫，而是為了看見此刻的你——不評判，不期待。哪怕只有一句話，也算到了。`,
+    witness: `每週給自己 30 分鐘，見證這一週真實活過的樣子。\n\n不評分，不比較，不要問「這週夠好嗎？」——只是陪著自己好好看見。你是自己的見證人，不是審判者。見證本身就是療癒。`,
     monthly: `一個人的時間是充電，不是逃跑。\n\n每個月給自己一天（或半天），讓自己重新找回自己的重心。可以是獨自散步、看一本書、在咖啡廳發呆——任何讓你覺得「這是我的時間」的事都算。\n\n做什麼：事先規劃好，當天不做「應該做」的事，只做滋養自己的事。\n不做什麼：不刷社群、不回工作訊息、不討論別人的事。`,
   };
 
@@ -2305,11 +2311,31 @@ function RitualPage({ theme, isMobile, ritualEntries, onSave, onDelete, onEdit }
 // ============================================================================
 
 const DEFAULT_COURAGE_CATEGORIES = [
-  { id: 'solo', label: '獨自行動', archived: false },
-  { id: 'social', label: '社交互動', archived: false },
-  { id: 'voice', label: '說出來', archived: false },
-  { id: 'expression', label: '表達自己', archived: false },
-  { id: 'other', label: '其他', archived: false },
+  {
+    id: 'solo', label: '獨自行動', archived: false,
+    definition: '一個人去做一件你通常會需要「伴」才敢去的事。',
+    examples: '第一次獨自去一家想去很久的餐廳、一個人看電影、獨自去旅行一天。',
+  },
+  {
+    id: 'social', label: '社交互動', archived: false,
+    definition: '在人際場合中，選擇靠近而不是縮回去。',
+    examples: '主動開口搭話、接受邀請而不找藉口推掉、留在聚會裡而不是提早離開。',
+  },
+  {
+    id: 'voice', label: '說出來', archived: false,
+    definition: '說出一個你本來可能會吞回去的真心話。',
+    examples: '說出自己的需求、表達不舒服的感受、在重要時刻說「我在乎這件事」。',
+  },
+  {
+    id: 'expression', label: '表達自己', archived: false,
+    definition: '讓別人看見「真實的你」的某個部分，而不是你以為他們期待的樣子。',
+    examples: '分享一個自己的創作、說出一個少見人知道的興趣、穿上一件你喜歡但怕被評價的東西。',
+  },
+  {
+    id: 'other', label: '其他', archived: false,
+    definition: '不在以上分類裡，但你知道那一刻你鼓起了勇氣。',
+    examples: '讓心跳加速了一點的事，都算。',
+  },
 ];
 
 function getCategoryIcon(cat) {
@@ -2593,7 +2619,7 @@ function CouragePage({ theme, isMobile, smallCourages, onSave, onDelete, onEdit,
             </div>
             <div>
               <label style={{ fontSize: 13, color: theme.t2, marginBottom: 10, display: 'block' }}>分類</label>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
                 {activeCats.map(c => (
                   <button key={c.id} onClick={() => setCategory(c.id)} style={{
                     padding: '7px 14px', borderRadius: 20, cursor: 'pointer', fontSize: 13,
@@ -2603,6 +2629,24 @@ function CouragePage({ theme, isMobile, smallCourages, onSave, onDelete, onEdit,
                   }}>{c.label}</button>
                 ))}
               </div>
+              {(() => {
+                const selCat = activeCats.find(c => c.id === category);
+                if (!selCat?.definition) return null;
+                return (
+                  <div style={{
+                    background: theme.accentLight + '40',
+                    border: '0.5px solid ' + theme.accent + '30',
+                    borderRadius: 8, padding: '10px 14px',
+                  }}>
+                    <div style={{ fontSize: 13, color: theme.t1, lineHeight: 1.7, marginBottom: 6, fontFamily: font }}>
+                      {selCat.definition}
+                    </div>
+                    <div style={{ fontSize: 12, color: theme.t3, lineHeight: 1.6, fontStyle: 'italic', fontFamily: font }}>
+                      例：{selCat.examples}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button onClick={() => { setAdding(false); setAction(''); setFeeling(''); }} style={btnSecondary(theme)}>取消</button>
@@ -2832,7 +2876,7 @@ function GroundFriendTab({ theme, isMobile, groundFriends, groundFriendCheckIns,
 
   return (
     <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '20px 16px 80px' : '28px 24px 80px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
         <div>
           <div style={{ fontSize: 18, fontWeight: 500, color: theme.t1, fontFamily: font }}>地面朋友</div>
           <div style={{ fontSize: 12, color: theme.t3, marginTop: 4, fontFamily: font, fontStyle: 'italic' }}>讓你記得自己是誰的人</div>
@@ -2840,6 +2884,9 @@ function GroundFriendTab({ theme, isMobile, groundFriends, groundFriendCheckIns,
         {!adding && !editingFriendId && groundFriends.length < 3 && (
           <button onClick={() => setAdding(true)} style={{ ...btnPrimary(theme, false), padding: '8px 16px', fontSize: 13 }}>新增朋友</button>
         )}
+      </div>
+      <div style={{ fontSize: 13, color: theme.t2, lineHeight: 1.7, marginBottom: 20, fontFamily: font }}>
+        在關係裡最容易迷失自己。地面朋友是能把你拉回地面的人——他認識「完整的你」，不是「在關係裡的你」。定期和他對話，確認你還在。
       </div>
 
       {adding && <FriendForm friend={null} onSave={onSaveFriend} onCancel={() => setAdding(false)} />}
@@ -3016,7 +3063,10 @@ function IdentificationTab({ theme, isMobile, relationships, identificationAsses
   return (
     <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '20px 16px 80px' : '28px 24px 80px' }}>
       <div style={{ fontSize: 18, fontWeight: 500, color: theme.t1, fontFamily: font, marginBottom: 6 }}>辨識工具箱</div>
-      <div style={{ fontSize: 12, color: theme.t3, fontStyle: 'italic', marginBottom: 24, fontFamily: font }}>在看清楚之前，先不要做決定</div>
+      <div style={{ fontSize: 12, color: theme.t3, fontStyle: 'italic', marginBottom: 8, fontFamily: font }}>在看清楚之前，先不要做決定</div>
+      <div style={{ fontSize: 13, color: theme.t2, lineHeight: 1.7, marginBottom: 24, fontFamily: font }}>
+        感覺發酵的時候，最需要理性的補充。五項核對幫你評估對方是否真的適合你；三個 deal breaker 幫你辨識哪些訊號不能被情緒掩蓋。
+      </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 28 }}>
         {[
           { key: 'fiveCheck', title: '五項核對', desc: '從智識、情緒、價值觀、節奏、未來五個維度評分', icon: 'check' },
@@ -3080,7 +3130,10 @@ function LoweringTab({ theme, isMobile, relationships, loweringProtocols, onSave
   return (
     <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '20px 16px 80px' : '28px 24px 80px' }}>
       <div style={{ fontSize: 18, fontWeight: 500, color: theme.t1, fontFamily: font, marginBottom: 6 }}>降低捲入度</div>
-      <div style={{ fontSize: 12, color: theme.t3, fontStyle: 'italic', marginBottom: 20, fontFamily: font }}>不是懲罰，是保護自己的空間</div>
+      <div style={{ fontSize: 12, color: theme.t3, fontStyle: 'italic', marginBottom: 8, fontFamily: font }}>不是懲罰，是保護自己的空間</div>
+      <div style={{ fontSize: 13, color: theme.t2, lineHeight: 1.7, marginBottom: 20, fontFamily: font }}>
+        當你發現自己在這段關係裡太用力、太深，這套六項練習幫你找回距離感。不是放棄，是重新把重心放回自己身上。
+      </div>
       <div style={{ ...cardStyle(theme), marginBottom: 16, background: theme.accent + '08' }}>
         <div style={{ fontSize: 12, color: theme.t2, lineHeight: 1.7, fontFamily: font, fontStyle: 'italic' }}>
           不要告訴他你在做這個。<br />這不是懲罰，也不是測試。<br />這是你給自己的保護空間。
@@ -3152,12 +3205,15 @@ function OpenMarkTab({ theme, isMobile, openMarks, relationships, onSaveMark }) 
   const decided = openMarks.filter(m => m.decision !== 'pending');
   return (
     <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '20px 16px 80px' : '28px 24px 80px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
         <div>
           <div style={{ fontSize: 18, fontWeight: 500, color: theme.t1, fontFamily: font }}>10% 開放標記</div>
           <div style={{ fontSize: 12, color: theme.t3, fontStyle: 'italic', marginTop: 4, fontFamily: font }}>觀察，在決定之前</div>
         </div>
         {!adding && <button onClick={() => setAdding(true)} style={{ ...btnPrimary(theme, false), padding: '8px 16px', fontSize: 13 }}>新增標記</button>}
+      </div>
+      <div style={{ fontSize: 13, color: theme.t2, lineHeight: 1.7, marginBottom: 20, fontFamily: font }}>
+        對某人有感覺，但還不確定值不值得投入？用 14 天保持 10% 的開放——觀察，記錄，再決定要追蹤還是放下。
       </div>
       {adding && (
         <div style={{ ...cardStyle(theme), marginBottom: 16 }}>
@@ -3340,6 +3396,9 @@ function AICompanionTab({ theme, isMobile, relationships, groundFriends, aiCompa
   if (phase === 'gate') {
     return (
       <div style={{ maxWidth: 560, margin: '0 auto', padding: isMobile ? '40px 16px 80px' : '60px 24px 80px', textAlign: 'center' }}>
+        <div style={{ fontSize: 13, color: theme.t2, lineHeight: 1.7, marginBottom: 24, fontFamily: font, textAlign: 'left', padding: '10px 16px', borderLeft: '2px solid ' + theme.accent + '50' }}>
+          找不到人說、或只想先自己理一理——Raman 陪你問三個最關鍵的問題。不分析、不評判，只是陪你看清楚自己在哪裡。
+        </div>
         <div style={{ fontSize: 13, color: theme.t3, fontFamily: font, fontStyle: 'italic', marginBottom: 32, lineHeight: 1.9 }}>
           {daysSinceFriend !== null
             ? <>你上次跟 <span style={{ color: theme.t1, fontWeight: 500 }}>{primaryFriend.codename}</span> 對話是 <span style={{ color: theme.accent }}>{daysSinceFriend}</span> 天前。<br />要先約他聊聊嗎？</>
@@ -3444,6 +3503,9 @@ function RelationshipSupportPage({ theme, isMobile, relationships, groundFriends
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: isAI ? (isMobile ? 'calc(100dvh - 56px)' : '100dvh') : 'auto', minHeight: isAI ? undefined : 'auto' }}>
+      <div style={{ padding: isMobile ? '16px 16px 0' : '20px 24px 0', background: theme.bg, flexShrink: 0 }}>
+        <h2 style={{ margin: '0 0 12px', fontSize: 20, fontWeight: 500, color: theme.t1, fontFamily: font }}>關係支援</h2>
+      </div>
       <div style={{ display: 'flex', borderBottom: '1.5px solid ' + theme.border, background: theme.bg, flexShrink: 0 }}>
         {tabs.map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
@@ -3534,7 +3596,8 @@ function QuarterlyTab({ theme, isMobile, quarterlyReviews, sundayWitnesses, smal
   const totalWeatherEntries = Object.values(weatherCounts).reduce((a, b) => a + b, 0);
 
   const [yearPart, qPart] = currentQ.split('-Q');
-  const qLabel = yearPart + ' 年 Q' + qPart;
+  const qMonthRange = ['1月—3月', '4月—6月', '7月—9月', '10月—12月'][parseInt(qPart) - 1];
+  const qLabel = yearPart + ' 年 Q' + qPart + '　' + qMonthRange;
 
   const handleSave = () => {
     onSave({
@@ -3633,9 +3696,10 @@ function QuarterlyTab({ theme, isMobile, quarterlyReviews, sundayWitnesses, smal
             <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
               {pastQuarters.map(r => {
                 const [y, qp] = r.quarter.split('-Q');
+                const histRange = ['1月—3月', '4月—6月', '7月—9月', '10月—12月'][parseInt(qp) - 1];
                 return (
                   <div key={r.id} style={{ borderTop: '0.5px solid ' + theme.border, paddingTop: 12 }}>
-                    <div style={{ fontSize: 14, fontWeight: 500, color: theme.t1, fontFamily: font, marginBottom: 8 }}>{y} 年 Q{qp}</div>
+                    <div style={{ fontSize: 14, fontWeight: 500, color: theme.t1, fontFamily: font, marginBottom: 8 }}>{y} 年 Q{qp}　<span style={{ fontSize: 12, fontWeight: 400, color: theme.t3 }}>{histRange}</span></div>
                     {r.patternsNoticed && <div style={{ fontSize: 13, color: theme.t2, marginBottom: 4 }}><span style={{ color: theme.t3 }}>模式：</span>{r.patternsNoticed}</div>}
                     {r.proudOf && <div style={{ fontSize: 13, color: theme.t2, marginBottom: 4 }}><span style={{ color: theme.t3 }}>驕傲：</span>{r.proudOf}</div>}
                     {r.nextQuarterAdjustments && <div style={{ fontSize: 13, color: theme.t2 }}><span style={{ color: theme.t3 }}>調整：</span>{r.nextQuarterAdjustments}</div>}
@@ -4266,7 +4330,7 @@ function RelationshipDetailPage({ theme, isMobile, relationship, depthGauges, on
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 13, color: theme.t2 }}>
-                      {g.weekStartDate ? weekDateRange(g.weekStartDate) : g.weekNumber}
+                      {g.weekStartDate ? formatDateMD(g.weekStartDate) : g.weekNumber}
                     </span>
                     {delta !== null && (
                       <span style={{ fontSize: 11, color: delta > 0 ? theme.coral : delta < 0 ? theme.accent : theme.t3 }}>
@@ -4329,9 +4393,9 @@ function RelationshipDetailPage({ theme, isMobile, relationship, depthGauges, on
 
       {/* 階段管理按鈕 */}
       {relationship.currentStage !== 'ended' && (
-        <div style={{ ...cardStyle(theme), marginTop: 16 }}>
-          <div style={{ fontSize: 12, color: theme.t3, marginBottom: 12, letterSpacing: '0.04em' }}>—— 階段管理 ——</div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ marginTop: 24 }}>
+          <div style={{ fontSize: 12, color: theme.t3, marginBottom: 14, letterSpacing: '0.04em', textAlign: 'center' }}>—— 階段管理 ——</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
             {relationship.currentStage === 'observation' && (
               <button onClick={() => setStageModal('developing')} style={btnPrimary(theme)}>
                 切換到發展中
@@ -4361,13 +4425,15 @@ function RelationshipDetailPage({ theme, isMobile, relationship, depthGauges, on
         </div>
       )}
       {relationship.currentStage === 'ended' && (
-        <div style={{ ...cardStyle(theme), marginTop: 16 }}>
-          <div style={{ fontSize: 12, color: theme.t3, marginBottom: 12, letterSpacing: '0.04em' }}>—— 管理 ——</div>
-          <button
-            onClick={() => setStageModal('delete')}
-            style={{ ...btnSecondary(theme), color: theme.coral, borderColor: theme.coral + '50', opacity: 0.7 }}>
-            刪除這段關係紀錄
-          </button>
+        <div style={{ marginTop: 24 }}>
+          <div style={{ fontSize: 12, color: theme.t3, marginBottom: 14, letterSpacing: '0.04em', textAlign: 'center' }}>—— 管理 ——</div>
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <button
+              onClick={() => setStageModal('delete')}
+              style={{ ...btnSecondary(theme), color: theme.coral, borderColor: theme.coral + '50', opacity: 0.7 }}>
+              刪除這段關係紀錄
+            </button>
+          </div>
         </div>
       )}
 
@@ -4469,12 +4535,12 @@ function RelationshipDetailPage({ theme, isMobile, relationship, depthGauges, on
 // ============================================================================
 
 const GAUGE_QUESTIONS = [
-  { key: 'q1', label: '想念佔思緒幾成' },
-  { key: 'q2', label: '為他改變自己多少' },
-  { key: 'q3', label: '訊息晚回的情緒波動' },
-  { key: 'q4', label: '忽略自己配合他' },
-  { key: 'q5', label: '聊他的時間占比' },
-  { key: 'q6', label: '他消失會塌幾成' },
+  { key: 'q1', label: '想念佔思緒幾成', lo: '完全沒有', mid: '偶爾想起', hi: '幾乎佔滿思緒' },
+  { key: 'q2', label: '為他改變自己多少', lo: '完全沒有', mid: '有些小調整', hi: '大幅改變自己' },
+  { key: 'q3', label: '訊息晚回的情緒波動', lo: '完全平靜', mid: '有些焦慮', hi: '嚴重焦慮' },
+  { key: 'q4', label: '忽略自己配合他', lo: '完全沒有', mid: '偶爾讓步', hi: '常常忽略自己' },
+  { key: 'q5', label: '聊他的時間占比', lo: '完全沒有', mid: '話題中一半', hi: '幾乎都在聊他' },
+  { key: 'q6', label: '他消失會塌幾成', lo: '完全不受影響', mid: '會有衝擊', hi: '感覺會崩塌' },
 ];
 
 function gaugeBarHeight(score) {
@@ -4579,8 +4645,13 @@ function DepthGaugePage({ theme, isMobile, relationship, onBack, onSave }) {
                   );
                 })}
               </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, paddingTop: 4, borderTop: '0.5px solid ' + theme.border + '60' }}>
+                <span style={{ fontSize: 10, color: theme.t3, fontFamily: font }}>1 · {q.lo}</span>
+                <span style={{ fontSize: 10, color: theme.t3, fontFamily: font }}>5 · {q.mid}</span>
+                <span style={{ fontSize: 10, color: theme.coral + 'CC', fontFamily: font }}>10 · {q.hi}</span>
+              </div>
               {selected > 0 && (
-                <div style={{ marginTop: 6, fontSize: 12, color: selected >= 7 ? theme.coral : theme.t3, fontFamily: font }}>
+                <div style={{ marginTop: 4, fontSize: 12, color: selected >= 7 ? theme.coral : theme.t3, fontFamily: font }}>
                   已選 {selected} 分{selected >= 7 ? ' · 警戒範圍' : ''}
                 </div>
               )}
