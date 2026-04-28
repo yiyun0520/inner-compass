@@ -987,7 +987,7 @@ function MorningAnchorRow({ entry, theme, isTouch, onSave, onDelete }) {
               <div style={{ fontSize: 14, color: theme.t1, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{entry.allowIntent}</div>
             </div>
           )}
-          {confirmDelete && 
+          {confirmDelete && (
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 10 }}>
               <button onClick={() => setConfirmDelete(false)} style={btnSecondary(theme)}>取消</button>
               <button onClick={() => onDelete(entry.id)} style={{
