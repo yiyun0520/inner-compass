@@ -6,7 +6,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 // ============================================================================
 
 const TOOL_CODE = 'inner-compass';
-const TOOL_VERSION = '1.6';
+const TOOL_VERSION = '1.7';
 const CURRENT_DATA_VERSION = 1;
 const lsKey = (key) => 'ic-v1-' + key;
 
@@ -125,6 +125,26 @@ function isLastWeekOfQuarter() {
   const day = new Date().getDate();
   const lastMonthOfQuarter = [3, 6, 9, 12];
   return lastMonthOfQuarter.includes(month) && day >= 24;
+}
+
+function getCurrentQuarter() {
+  const now = new Date();
+  const q = Math.ceil((now.getMonth() + 1) / 3);
+  return now.getFullYear() + '-Q' + q;
+}
+
+function getQuarterDateRange(qStr) {
+  const [yearPart, qPart] = qStr.split('-Q');
+  const year = parseInt(yearPart);
+  const q = parseInt(qPart);
+  const startMonth = (q - 1) * 3 + 1;
+  const endMonth = q * 3;
+  const isLeap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const endDays = [31, isLeap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return {
+    start: year + '-' + String(startMonth).padStart(2, '0') + '-01',
+    end: year + '-' + String(endMonth).padStart(2, '0') + '-' + String(endDays[endMonth - 1]).padStart(2, '0'),
+  };
 }
 
 // ============================================================================
@@ -661,6 +681,23 @@ function HomePage({ theme, isMobile, onNavigate, morningAnchors, sundayWitnesses
 
   return (
     <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '20px 16px 100px' : '32px 24px 80px' }}>
+      {/* 其他入口（頂部） */}
+      <div style={{ ...cardStyle(theme), marginBottom: 20, padding: '14px 16px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {[
+            { label: '儀式菜單', page: PAGES.RITUAL },
+            { label: '月度獨處', page: PAGES.DAILY, tab: 'monthly' },
+            { label: '關係管理', page: PAGES.RELATIONSHIP },
+            { label: '關係支援', page: PAGES.SUPPORT },
+            { label: '回顧', page: PAGES.REVIEW },
+          ].map(item => (
+            <button key={item.label} onClick={() => onNavigate(item.page, item.tab)} style={{
+              ...btnSecondary(theme), padding: '7px 14px', fontSize: 13,
+            }}>{item.label}</button>
+          ))}
+        </div>
+      </div>
+
       {/* 引言卡 */}
       <div style={{
         ...cardStyle(theme),
@@ -774,24 +811,6 @@ function HomePage({ theme, isMobile, onNavigate, morningAnchors, sundayWitnesses
         </div>
       </div>
 
-      {/* 底部導航入口 */}
-      <div style={{ ...cardStyle(theme) }}>
-        <div style={{ fontSize: 13, color: theme.t3, marginBottom: 12, letterSpacing: '0.04em' }}>—— 其他入口 ——</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {[
-            { label: '儀式菜單', page: PAGES.RITUAL },
-            { label: '月度獨處', page: PAGES.DAILY, tab: 'monthly' },
-            { label: '關係管理', page: PAGES.RELATIONSHIP },
-            { label: '關係支援', page: PAGES.SUPPORT },
-            { label: '回顧', page: PAGES.REVIEW },
-          ].map(item => (
-            <button key={item.label} onClick={() => onNavigate(item.page, item.tab)} style={{
-              ...btnSecondary(theme),
-              padding: '8px 16px', fontSize: 13,
-            }}>{item.label}</button>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
@@ -3019,14 +3038,16 @@ function RelationshipSupportPage({ theme, isMobile, relationships, groundFriends
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: isAI ? (isMobile ? 'calc(100dvh - 56px)' : '100dvh') : 'auto', minHeight: isAI ? undefined : 'auto' }}>
-      <div style={{ display: 'flex', overflowX: 'auto', borderBottom: '0.5px solid ' + theme.border, background: theme.bg, flexShrink: 0 }}>
+      <div style={{ display: 'flex', borderBottom: '1.5px solid ' + theme.border, background: theme.bg, flexShrink: 0 }}>
         {tabs.map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
-            padding: '13px 16px', background: 'transparent', border: 'none', cursor: 'pointer',
-            color: activeTab === tab.id ? theme.accent : theme.t3, fontFamily: font, fontSize: 13,
-            whiteSpace: 'nowrap', flexShrink: 0,
+            flex: 1, background: 'transparent', border: 'none', cursor: 'pointer',
+            color: activeTab === tab.id ? theme.accent : theme.t3, fontFamily: font,
+            fontSize: isMobile ? 11 : 13,
             borderBottom: activeTab === tab.id ? '2px solid ' + theme.accent : '2px solid transparent',
-            transition: 'all 150ms',
+            padding: '11px 4px', marginBottom: -1.5,
+            fontWeight: activeTab === tab.id ? 500 : 400,
+            transition: 'all 150ms', textAlign: 'center',
           }}>{tab.label}</button>
         ))}
       </div>
@@ -3037,6 +3058,402 @@ function RelationshipSupportPage({ theme, isMobile, relationships, groundFriends
         {activeTab === 'open' && <OpenMarkTab theme={theme} isMobile={isMobile} openMarks={openMarks} relationships={relationships} onSaveMark={onSaveMark} />}
         {activeTab === 'ai' && <AICompanionTab theme={theme} isMobile={isMobile} relationships={relationships} groundFriends={groundFriends} aiCompanionSessions={aiCompanionSessions} onSaveSession={onSaveSession} />}
       </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// ReviewPage - 季度 + 年度回顧
+// ============================================================================
+
+function ReviewPage({ theme, isMobile, quarterlyReviews, yearlyReviews, sundayWitnesses, smallCourages, onSaveQuarterly, onSaveYearly }) {
+  const [tab, setTab] = useState('quarterly');
+  const font = "'Noto Serif TC', serif";
+  const tabs = [{ id: 'quarterly', label: '季度' }, { id: 'yearly', label: '年度' }];
+
+  return (
+    <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '20px 16px 100px' : '32px 24px 80px' }}>
+      <h2 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 500, color: theme.t1, fontFamily: font }}>回顧</h2>
+      <p style={{ margin: '0 0 24px', fontSize: 13, color: theme.t3, fontStyle: 'italic' }}>見證自己走過的旅程</p>
+      <div style={{ display: 'flex', borderBottom: '1.5px solid ' + theme.border, marginBottom: 24 }}>
+        {tabs.map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)} style={{
+            flex: 1, background: 'transparent', border: 'none',
+            borderBottom: tab === t.id ? '2px solid ' + theme.accent : '2px solid transparent',
+            padding: '11px 8px', fontSize: 14,
+            color: tab === t.id ? theme.accent : theme.t3,
+            cursor: 'pointer', transition: 'all 150ms', fontFamily: font,
+            marginBottom: -1.5, fontWeight: tab === t.id ? 500 : 400, textAlign: 'center',
+          }}>{t.label}</button>
+        ))}
+      </div>
+      {tab === 'quarterly' && <QuarterlyTab theme={theme} isMobile={isMobile} quarterlyReviews={quarterlyReviews} sundayWitnesses={sundayWitnesses} smallCourages={smallCourages} onSave={onSaveQuarterly} />}
+      {tab === 'yearly' && <YearlyTab theme={theme} isMobile={isMobile} yearlyReviews={yearlyReviews} onSave={onSaveYearly} />}
+    </div>
+  );
+}
+
+// ============================================================================
+// QuarterlyTab
+// ============================================================================
+
+function QuarterlyTab({ theme, isMobile, quarterlyReviews, sundayWitnesses, smallCourages, onSave }) {
+  const font = "'Noto Serif TC', serif";
+  const currentQ = getCurrentQuarter();
+  const [showHistory, setShowHistory] = useState(false);
+
+  const existingReview = quarterlyReviews.find(r => r.quarter === currentQ);
+  const [patterns, setPatterns] = useState(existingReview?.patternsNoticed || '');
+  const [proud, setProud] = useState(existingReview?.proudOf || '');
+  const [nextAdj, setNextAdj] = useState(existingReview?.nextQuarterAdjustments || '');
+
+  useEffect(() => {
+    const r = quarterlyReviews.find(r => r.quarter === currentQ);
+    setPatterns(r?.patternsNoticed || '');
+    setProud(r?.proudOf || '');
+    setNextAdj(r?.nextQuarterAdjustments || '');
+  }, [currentQ, quarterlyReviews]);
+
+  const { start, end } = getQuarterDateRange(currentQ);
+  const witnessesInQ = sundayWitnesses.filter(w => w.weekStartDate >= start && w.weekStartDate <= end);
+  const couragesInQ = smallCourages.filter(c => c.date >= start && c.date <= end);
+  const totalWeeks = 13;
+
+  const weatherCounts = { sunny: 0, cloudy: 0, rainy: 0, foggy: 0, stormy: 0 };
+  witnessesInQ.forEach(w => {
+    (w.emotionalWeather || []).forEach(type => {
+      if (type in weatherCounts) weatherCounts[type]++;
+    });
+  });
+  const totalWeatherEntries = Object.values(weatherCounts).reduce((a, b) => a + b, 0);
+
+  const [yearPart, qPart] = currentQ.split('-Q');
+  const qLabel = yearPart + ' 年 Q' + qPart;
+
+  const handleSave = () => {
+    onSave({
+      id: existingReview?.id || genId(),
+      quarter: currentQ,
+      patternsNoticed: patterns,
+      proudOf: proud,
+      nextQuarterAdjustments: nextAdj,
+      createdAt: existingReview?.createdAt || Date.now(),
+    });
+  };
+
+  const taStyle = {
+    width: '100%', background: theme.bgDeep,
+    border: '0.5px solid ' + theme.border, borderRadius: 8,
+    padding: '12px 14px', fontSize: 15, color: theme.t1,
+    fontFamily: font, lineHeight: 1.8, resize: 'none',
+    outline: 'none', boxSizing: 'border-box',
+  };
+
+  const pastQuarters = quarterlyReviews
+    .filter(r => r.quarter !== currentQ)
+    .sort((a, b) => b.quarter.localeCompare(a.quarter));
+
+  return (
+    <div>
+      <div style={{ ...cardStyle(theme), marginBottom: 20 }}>
+        <div style={{ fontSize: 12, color: theme.t3, marginBottom: 4, letterSpacing: '0.06em' }}>當前季度</div>
+        <div style={{ fontSize: 20, fontWeight: 500, color: theme.t1, fontFamily: font }}>{qLabel}</div>
+      </div>
+
+      <div style={{ ...cardStyle(theme), marginBottom: 20 }}>
+        <div style={{ fontSize: 13, color: theme.t2, marginBottom: 14, fontFamily: font, fontWeight: 500 }}>本季資料</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <span style={{ fontSize: 13, color: theme.t2, fontFamily: font }}>週日見證</span>
+          <span style={{ fontSize: 14, fontWeight: 500, color: theme.accent, fontFamily: font }}>{witnessesInQ.length} / {totalWeeks} 週</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: totalWeatherEntries > 0 ? 16 : 0 }}>
+          <span style={{ fontSize: 13, color: theme.t2, fontFamily: font }}>小勇敢</span>
+          <span style={{ fontSize: 14, fontWeight: 500, color: theme.accent, fontFamily: font }}>{couragesInQ.length} 次</span>
+        </div>
+        {totalWeatherEntries > 0 && (
+          <div>
+            <div style={{ fontSize: 12, color: theme.t3, marginBottom: 8, fontFamily: font }}>情緒天氣分佈</div>
+            {WEATHER_OPTIONS.map(opt => {
+              const count = weatherCounts[opt.id] || 0;
+              if (count === 0) return null;
+              const pct = (count / totalWeatherEntries) * 100;
+              return (
+                <div key={opt.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <WeatherIcon type={opt.id} size={13} color={theme.t3} />
+                  <span style={{ fontSize: 11, color: theme.t3, width: 20 }}>{opt.label}</span>
+                  <div style={{ flex: 1, height: 5, background: theme.bgDeep, borderRadius: 3, overflow: 'hidden' }}>
+                    <div style={{ width: pct + '%', height: '100%', background: theme.accent + 'B0', borderRadius: 3, transition: 'width 400ms ease-out' }} />
+                  </div>
+                  <span style={{ fontSize: 11, color: theme.t3, minWidth: 16, textAlign: 'right' }}>{count}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {witnessesInQ.length === 0 && (
+          <div style={{ fontSize: 12, color: theme.t3, fontStyle: 'italic', marginTop: 4 }}>本季尚無見證紀錄</div>
+        )}
+      </div>
+
+      <div style={{ ...cardStyle(theme), marginBottom: 20 }}>
+        <div style={{ fontSize: 12, color: theme.t3, marginBottom: 20, letterSpacing: '0.08em', textAlign: 'center' }}>⸻ 季度回顧 ⸻</div>
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ fontSize: 13, color: theme.t2, display: 'block', marginBottom: 8, fontFamily: font }}>這季我注意到的模式</label>
+          <AutoTextarea value={patterns} onChange={e => setPatterns(e.target.value)} placeholder="重複出現的感受、行為、或轉折…" style={taStyle} minRows={3} />
+        </div>
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ fontSize: 13, color: theme.t2, display: 'block', marginBottom: 8, fontFamily: font }}>這季我為自己驕傲的事</label>
+          <AutoTextarea value={proud} onChange={e => setProud(e.target.value)} placeholder="不分大小，具體的事…" style={taStyle} minRows={3} />
+        </div>
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ fontSize: 13, color: theme.t2, display: 'block', marginBottom: 8, fontFamily: font }}>下季我想做的一個調整</label>
+          <AutoTextarea value={nextAdj} onChange={e => setNextAdj(e.target.value)} placeholder="一個具體、可執行的方向…" style={taStyle} minRows={3} />
+        </div>
+        <button onClick={handleSave} style={{ ...btnPrimary(theme), width: '100%' }}>
+          {existingReview ? '更新回顧' : '儲存回顧'}
+        </button>
+      </div>
+
+      {pastQuarters.length > 0 && (
+        <div style={{ ...cardStyle(theme) }}>
+          <button onClick={() => setShowHistory(v => !v)} style={{
+            background: 'transparent', border: 'none', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: 0,
+          }}>
+            <span style={{ fontSize: 14, color: theme.t2, fontFamily: font }}>過往季度</span>
+            <Icon name={showHistory ? 'chevronDown' : 'chevronRight'} size={16} color={theme.t3} />
+          </button>
+          {showHistory && (
+            <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {pastQuarters.map(r => {
+                const [y, qp] = r.quarter.split('-Q');
+                return (
+                  <div key={r.id} style={{ borderTop: '0.5px solid ' + theme.border, paddingTop: 12 }}>
+                    <div style={{ fontSize: 14, fontWeight: 500, color: theme.t1, fontFamily: font, marginBottom: 8 }}>{y} 年 Q{qp}</div>
+                    {r.patternsNoticed && <div style={{ fontSize: 13, color: theme.t2, marginBottom: 4 }}><span style={{ color: theme.t3 }}>模式：</span>{r.patternsNoticed}</div>}
+                    {r.proudOf && <div style={{ fontSize: 13, color: theme.t2, marginBottom: 4 }}><span style={{ color: theme.t3 }}>驕傲：</span>{r.proudOf}</div>}
+                    {r.nextQuarterAdjustments && <div style={{ fontSize: 13, color: theme.t2 }}><span style={{ color: theme.t3 }}>調整：</span>{r.nextQuarterAdjustments}</div>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// YearlyTab - 卷軸 UI
+// ============================================================================
+
+function YearlyTab({ theme, isMobile, yearlyReviews, onSave }) {
+  const font = "'Noto Serif TC', serif";
+  const garamondFont = "'EB Garamond', 'Noto Serif TC', serif";
+  const currentYear = new Date().getFullYear();
+  const [showHistory, setShowHistory] = useState(false);
+
+  const existingReview = yearlyReviews.find(r => r.year === currentYear);
+  const isSealed = existingReview?.letterSealed;
+  const unlockDate = existingReview?.letterUnlockDate;
+  const isUnlocked = unlockDate ? todayStr() >= unlockDate : false;
+
+  const [became, setBecame] = useState(existingReview?.becameThisYear || '');
+  const [proud, setProud] = useState(existingReview?.proudOf || '');
+  const [letter, setLetter] = useState(existingReview?.letterToNextYearSelf || '');
+  const [confirmSeal, setConfirmSeal] = useState(false);
+
+  useEffect(() => {
+    const r = yearlyReviews.find(r => r.year === currentYear);
+    setBecame(r?.becameThisYear || '');
+    setProud(r?.proudOf || '');
+    setLetter(r?.letterToNextYearSelf || '');
+  }, [currentYear, yearlyReviews]);
+
+  const handleSave = () => {
+    onSave({
+      id: existingReview?.id || genId(),
+      year: currentYear,
+      becameThisYear: became,
+      proudOf: proud,
+      letterToNextYearSelf: letter,
+      letterSealed: existingReview?.letterSealed || false,
+      letterUnlockDate: existingReview?.letterUnlockDate || null,
+      createdAt: existingReview?.createdAt || Date.now(),
+    });
+  };
+
+  const handleSeal = () => {
+    onSave({
+      id: existingReview?.id || genId(),
+      year: currentYear,
+      becameThisYear: became,
+      proudOf: proud,
+      letterToNextYearSelf: letter,
+      letterSealed: true,
+      letterUnlockDate: (currentYear + 1) + '-12-31',
+      createdAt: existingReview?.createdAt || Date.now(),
+    });
+    setConfirmSeal(false);
+  };
+
+  const scrollBg = theme.dark
+    ? 'linear-gradient(180deg, #2A2318 0%, #1E1A14 50%, #2A2318 100%)'
+    : 'linear-gradient(180deg, #FEF8EE 0%, #F7EDD8 50%, #FEF8EE 100%)';
+  const scrollBorderColor = theme.dark ? '#4A3A2A' : '#D4B896';
+
+  const taStyle = {
+    width: '100%', background: 'transparent',
+    border: 'none', borderBottom: '0.5px solid ' + (isSealed ? scrollBorderColor + '60' : scrollBorderColor),
+    borderRadius: 0, padding: '10px 0',
+    fontSize: 15, color: isSealed ? theme.t3 : theme.t1,
+    fontFamily: font, lineHeight: 2, resize: 'none', outline: 'none', boxSizing: 'border-box',
+  };
+
+  const pastYearReviews = yearlyReviews.filter(r => r.year !== currentYear).sort((a, b) => b.year - a.year);
+
+  return (
+    <div>
+      <div style={{
+        background: scrollBg,
+        borderLeft: '1px solid ' + scrollBorderColor,
+        borderRight: '1px solid ' + scrollBorderColor,
+        borderRadius: 4,
+        padding: isMobile ? '32px 24px' : '48px 40px',
+        marginBottom: 20,
+      }}>
+        {/* 卷軸標題 */}
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <div style={{ fontSize: 10, color: theme.t3, letterSpacing: '0.35em', marginBottom: 10, fontFamily: garamondFont }}>
+            ⸻&ensp;INNER COMPASS&ensp;⸻
+          </div>
+          <div style={{ fontSize: isMobile ? 30 : 40, fontWeight: 400, color: theme.t1, fontFamily: garamondFont, letterSpacing: '0.2em', lineHeight: 1.2 }}>
+            {currentYear}
+          </div>
+          <div style={{ fontSize: 12, color: theme.t3, marginTop: 8, fontFamily: font, letterSpacing: '0.12em' }}>年度卷軸</div>
+        </div>
+
+        <div style={{ borderTop: '0.5px solid ' + scrollBorderColor, marginBottom: 28 }} />
+
+        {/* 這一年我變成 */}
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ fontSize: 12, color: theme.t3, letterSpacing: '0.12em', marginBottom: 12, fontFamily: font }}>這一年，我變成了</div>
+          {isSealed && !isUnlocked ? (
+            <div style={{ fontSize: 15, color: theme.t3, fontStyle: 'italic', lineHeight: 2, padding: '10px 0', borderBottom: '0.5px solid ' + scrollBorderColor + '60' }}>
+              {became || '（未填寫）'}
+            </div>
+          ) : (
+            <AutoTextarea value={became} onChange={e => setBecame(e.target.value)} placeholder="用幾個詞，或幾句話，描述這一年你成為的樣子…" style={taStyle} minRows={3} />
+          )}
+        </div>
+
+        {/* 這一年我驕傲的事 */}
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ fontSize: 12, color: theme.t3, letterSpacing: '0.12em', marginBottom: 12, fontFamily: font }}>這一年，我為自己驕傲的是</div>
+          {isSealed && !isUnlocked ? (
+            <div style={{ fontSize: 15, color: theme.t3, fontStyle: 'italic', lineHeight: 2, padding: '10px 0', borderBottom: '0.5px solid ' + scrollBorderColor + '60' }}>
+              {proud || '（未填寫）'}
+            </div>
+          ) : (
+            <AutoTextarea value={proud} onChange={e => setProud(e.target.value)} placeholder="不論多小，都算數…" style={taStyle} minRows={3} />
+          )}
+        </div>
+
+        {/* 給明年的信 */}
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ fontSize: 12, color: theme.t3, letterSpacing: '0.12em', marginBottom: 12, fontFamily: font }}>給明年的自己</div>
+          {isSealed ? (
+            isUnlocked ? (
+              <div style={{ fontSize: 15, color: theme.t1, lineHeight: 2, padding: '10px 0', fontStyle: 'italic' }}>{letter}</div>
+            ) : (
+              <div style={{
+                background: theme.accentLight + '30',
+                border: '0.5px dashed ' + theme.accent + '50',
+                borderRadius: 8, padding: '20px 16px', textAlign: 'center',
+              }}>
+                <Icon name="lock" size={18} color={theme.accent + '70'} style={{ marginBottom: 10, display: 'block', margin: '0 auto 10px' }} />
+                <div style={{ fontSize: 13, color: theme.t2, fontStyle: 'italic', lineHeight: 1.9, fontFamily: font }}>
+                  此信已封存。<br/>將於 {unlockDate?.slice(0, 4)} 年底自動開啟。
+                </div>
+              </div>
+            )
+          ) : (
+            <AutoTextarea value={letter} onChange={e => setLetter(e.target.value)} placeholder="寫一封信給明年的自己。關於現在的你想讓她知道的事，或你希望她記得的事…" style={taStyle} minRows={5} />
+          )}
+        </div>
+
+        <div style={{ borderTop: '0.5px solid ' + scrollBorderColor, marginBottom: 24 }} />
+
+        {/* 操作按鈕 */}
+        {!isSealed ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <button onClick={handleSave} style={{ ...btnSecondary(theme), width: '100%' }}>暫存草稿</button>
+            {letter.trim() && (
+              confirmSeal ? (
+                <div style={{ background: theme.accentLight + '30', border: '0.5px solid ' + theme.accent + '40', borderRadius: 8, padding: 16 }}>
+                  <div style={{ fontSize: 13, color: theme.t1, lineHeight: 1.8, marginBottom: 16, fontFamily: font, fontStyle: 'italic' }}>
+                    封存後，給明年的信將無法修改，直到 {currentYear + 1} 年底才能開啟。確定要封存嗎？
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => setConfirmSeal(false)} style={{ ...btnSecondary(theme), flex: 1 }}>再想想</button>
+                    <button onClick={handleSeal} style={{ ...btnPrimary(theme), flex: 1 }}>封存此信</button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => setConfirmSeal(true)} style={{ ...btnPrimary(theme), width: '100%' }}>
+                  封存並寄給明年的自己
+                </button>
+              )
+            )}
+          </div>
+        ) : isUnlocked ? (
+          <div style={{ textAlign: 'center', fontSize: 13, color: theme.t3, fontStyle: 'italic', fontFamily: font }}>
+            這封信已在 {currentYear + 1} 年底開啟。
+          </div>
+        ) : (
+          <div style={{ textAlign: 'center', fontSize: 13, color: theme.t3, fontStyle: 'italic', fontFamily: font }}>
+            此信已封存，靜待 {unlockDate?.slice(0, 4)} 年底。
+          </div>
+        )}
+      </div>
+
+      {/* 過往年度 */}
+      {pastYearReviews.length > 0 && (
+        <div style={{ ...cardStyle(theme) }}>
+          <button onClick={() => setShowHistory(v => !v)} style={{
+            background: 'transparent', border: 'none', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: 0,
+          }}>
+            <span style={{ fontSize: 14, color: theme.t2, fontFamily: font }}>過往年度</span>
+            <Icon name={showHistory ? 'chevronDown' : 'chevronRight'} size={16} color={theme.t3} />
+          </button>
+          {showHistory && (
+            <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {pastYearReviews.map(r => {
+                const canRead = !r.letterSealed || (r.letterUnlockDate && todayStr() >= r.letterUnlockDate);
+                return (
+                  <div key={r.id} style={{ borderTop: '0.5px solid ' + theme.border, paddingTop: 16 }}>
+                    <div style={{ fontSize: 15, fontWeight: 500, color: theme.t1, fontFamily: font, marginBottom: 10 }}>{r.year} 年</div>
+                    {r.becameThisYear && <div style={{ fontSize: 13, color: theme.t2, marginBottom: 4 }}><span style={{ color: theme.t3 }}>變成了：</span>{r.becameThisYear}</div>}
+                    {r.proudOf && <div style={{ fontSize: 13, color: theme.t2, marginBottom: 4 }}><span style={{ color: theme.t3 }}>驕傲：</span>{r.proudOf}</div>}
+                    {r.letterSealed && (
+                      <div style={{ fontSize: 12, color: canRead ? theme.accent : theme.t3, marginTop: 6, fontStyle: 'italic' }}>
+                        {canRead ? '信件已開啟' : '信件封存中・' + r.letterUnlockDate?.slice(0, 4) + ' 年底開啟'}
+                      </div>
+                    )}
+                    {canRead && r.letterToNextYearSelf && (
+                      <div style={{ fontSize: 13, color: theme.t2, marginTop: 8, fontStyle: 'italic', lineHeight: 1.8, paddingLeft: 12, borderLeft: '2px solid ' + theme.accentLight }}>
+                        {r.letterToNextYearSelf}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -3675,9 +4092,10 @@ function DepthGaugePage({ theme, isMobile, relationship, onBack, onSave }) {
 // 設定頁
 // ============================================================================
 
-function SettingsPage({ theme, isMobile, themeKey, onChangeTheme, onExportDaily, onImportDaily, onExportRelationships, onImportRelationships, isArtifactMode }) {
+function SettingsPage({ theme, isMobile, themeKey, onChangeTheme, onExportDaily, onImportDaily, onExportRelationships, onImportRelationships, onExportReviews, onImportReviews, isArtifactMode }) {
   const dailyFileRef = useRef(null);
   const relFileRef = useRef(null);
+  const reviewsFileRef = useRef(null);
   const font = "'Noto Serif TC', serif";
 
   return (
@@ -3727,7 +4145,7 @@ function SettingsPage({ theme, isMobile, themeKey, onChangeTheme, onExportDaily,
       {/* 關係資料 */}
       <div style={{ ...cardStyle(theme), marginBottom: 16 }}>
         <h3 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 500, color: theme.t1, fontFamily: font }}>關係資料</h3>
-        <div style={{ fontSize: 12, color: theme.t3, marginBottom: 14 }}>關係追蹤 · 暈船量表紀錄</div>
+        <div style={{ fontSize: 12, color: theme.t3, marginBottom: 14 }}>關係追蹤 · 暈船量表 · 地面朋友 · 辨識工具 · 降低捲入 · 開放標記 · AI 對話</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <button onClick={onExportRelationships} style={{ ...btnSecondary(theme), display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
             <Icon name="download" size={16} color={theme.t2} />
@@ -3739,6 +4157,25 @@ function SettingsPage({ theme, isMobile, themeKey, onChangeTheme, onExportDaily,
               匯入 relationships.json
             </button>
             <input ref={relFileRef} type="file" accept="application/json" onChange={onImportRelationships} style={{ display: 'none' }} />
+          </div>
+        </div>
+      </div>
+
+      {/* 回顧紀錄 */}
+      <div style={{ ...cardStyle(theme), marginBottom: 16 }}>
+        <h3 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 500, color: theme.t1, fontFamily: font }}>回顧紀錄</h3>
+        <div style={{ fontSize: 12, color: theme.t3, marginBottom: 14 }}>季度回顧 · 年度卷軸（含封存信件）</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <button onClick={onExportReviews} style={{ ...btnSecondary(theme), display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
+            <Icon name="download" size={16} color={theme.t2} />
+            匯出 reviews.json
+          </button>
+          <div>
+            <button onClick={() => reviewsFileRef.current?.click()} style={{ ...btnSecondary(theme), display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', width: '100%' }}>
+              <Icon name="upload" size={16} color={theme.t2} />
+              匯入 reviews.json
+            </button>
+            <input ref={reviewsFileRef} type="file" accept="application/json" onChange={onImportReviews} style={{ display: 'none' }} />
           </div>
         </div>
       </div>
@@ -3917,6 +4354,12 @@ export default function App() {
   const [aiCompanionSessions, setAiCompanionSessions] = useState(() => {
     try { return JSON.parse(localStorage.getItem(lsKey('aiCompanionSessions')) || '[]'); } catch { return []; }
   });
+  const [quarterlyReviews, setQuarterlyReviews] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(lsKey('quarterlyReviews')) || '[]'); } catch { return []; }
+  });
+  const [yearlyReviews, setYearlyReviews] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(lsKey('yearlyReviews')) || '[]'); } catch { return []; }
+  });
   useEffect(() => { localStorage.setItem(lsKey('relationships'), JSON.stringify(relationships)); }, [relationships]);
   useEffect(() => { localStorage.setItem(lsKey('depthGauges'), JSON.stringify(depthGauges)); }, [depthGauges]);
   useEffect(() => { localStorage.setItem(lsKey('groundFriends'), JSON.stringify(groundFriends)); }, [groundFriends]);
@@ -3925,6 +4368,8 @@ export default function App() {
   useEffect(() => { localStorage.setItem(lsKey('identificationAssessments'), JSON.stringify(identificationAssessments)); }, [identificationAssessments]);
   useEffect(() => { localStorage.setItem(lsKey('loweringProtocols'), JSON.stringify(loweringProtocols)); }, [loweringProtocols]);
   useEffect(() => { localStorage.setItem(lsKey('aiCompanionSessions'), JSON.stringify(aiCompanionSessions)); }, [aiCompanionSessions]);
+  useEffect(() => { localStorage.setItem(lsKey('quarterlyReviews'), JSON.stringify(quarterlyReviews)); }, [quarterlyReviews]);
+  useEffect(() => { localStorage.setItem(lsKey('yearlyReviews'), JSON.stringify(yearlyReviews)); }, [yearlyReviews]);
 
   // Toast
   const [toasts, setToasts] = useState([]);
@@ -4087,6 +4532,22 @@ export default function App() {
     setAiCompanionSessions(prev => [session, ...prev]);
   }, []);
 
+  const saveQuarterlyReview = useCallback((review) => {
+    setQuarterlyReviews(prev => {
+      const idx = prev.findIndex(r => r.quarter === review.quarter);
+      return idx >= 0 ? prev.map((r, i) => i === idx ? review : r) : [review, ...prev];
+    });
+    showToast('neutral', '季度回顧已儲存。');
+  }, [showToast]);
+
+  const saveYearlyReview = useCallback((review) => {
+    setYearlyReviews(prev => {
+      const idx = prev.findIndex(r => r.year === review.year);
+      return idx >= 0 ? prev.map((r, i) => i === idx ? review : r) : [review, ...prev];
+    });
+    showToast('neutral', review.letterSealed ? '信件已封存。' : '年度卷軸已儲存。');
+  }, [showToast]);
+
   // ---- 匯出 ----
   const handleExportDaily = useCallback(() => {
     const payload = {
@@ -4137,7 +4598,12 @@ export default function App() {
       version: '1.0',
       type: 'inner-compass-relationships',
       exportedAt: new Date().toISOString(),
-      data: { relationships, depthGauges },
+      data: {
+        relationships, depthGauges,
+        groundFriends, groundFriendCheckIns,
+        openMarks, identificationAssessments,
+        loweringProtocols, aiCompanionSessions,
+      },
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -4147,7 +4613,7 @@ export default function App() {
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
     showToast('neutral', '關係資料已匯出');
-  }, [relationships, depthGauges, showToast]);
+  }, [relationships, depthGauges, groundFriends, groundFriendCheckIns, openMarks, identificationAssessments, loweringProtocols, aiCompanionSessions, showToast]);
 
   const handleImportRelationships = useCallback((e) => {
     const file = e.target.files?.[0]; if (!file) return;
@@ -4159,7 +4625,47 @@ export default function App() {
         const d = imported.data;
         if (d.relationships) setRelationships(d.relationships);
         if (d.depthGauges) setDepthGauges(d.depthGauges);
+        if (d.groundFriends) setGroundFriends(d.groundFriends);
+        if (d.groundFriendCheckIns) setGroundFriendCheckIns(d.groundFriendCheckIns);
+        if (d.openMarks) setOpenMarks(d.openMarks);
+        if (d.identificationAssessments) setIdentificationAssessments(d.identificationAssessments);
+        if (d.loweringProtocols) setLoweringProtocols(d.loweringProtocols);
+        if (d.aiCompanionSessions) setAiCompanionSessions(d.aiCompanionSessions);
         showToast('neutral', '關係資料已匯入');
+      } catch { showToast('error', '匯入失敗：檔案解析錯誤'); }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  }, [showToast]);
+
+  const handleExportReviews = useCallback(() => {
+    const payload = {
+      version: '1.0',
+      type: 'inner-compass-reviews',
+      exportedAt: new Date().toISOString(),
+      data: { quarterlyReviews, yearlyReviews },
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'inner-compass-reviews-' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('neutral', '回顧紀錄已匯出');
+  }, [quarterlyReviews, yearlyReviews, showToast]);
+
+  const handleImportReviews = useCallback((e) => {
+    const file = e.target.files?.[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const imported = JSON.parse(ev.target.result);
+        if (imported.type !== 'inner-compass-reviews') { showToast('error', '檔案格式不符'); return; }
+        const d = imported.data;
+        if (d.quarterlyReviews) setQuarterlyReviews(d.quarterlyReviews);
+        if (d.yearlyReviews) setYearlyReviews(d.yearlyReviews);
+        showToast('neutral', '回顧紀錄已匯入');
       } catch { showToast('error', '匯入失敗：檔案解析錯誤'); }
     };
     reader.readAsText(file);
@@ -4289,7 +4795,12 @@ export default function App() {
             />
           )}
           {currentPage === PAGES.REVIEW && (
-            <PlaceholderPage title="回顧" theme={theme} isMobile={isMobile} message="批次 C 預計實作季度回顧與年度卷軸。" />
+            <ReviewPage
+              theme={theme} isMobile={isMobile}
+              quarterlyReviews={quarterlyReviews} yearlyReviews={yearlyReviews}
+              sundayWitnesses={sundayWitnesses} smallCourages={smallCourages}
+              onSaveQuarterly={saveQuarterlyReview} onSaveYearly={saveYearlyReview}
+            />
           )}
           {currentPage === PAGES.SETTINGS && (
             <SettingsPage theme={theme} isMobile={isMobile} themeKey={themeKey}
@@ -4298,6 +4809,8 @@ export default function App() {
               onImportDaily={handleImportDaily}
               onExportRelationships={handleExportRelationships}
               onImportRelationships={handleImportRelationships}
+              onExportReviews={handleExportReviews}
+              onImportReviews={handleImportReviews}
               isArtifactMode={isArtifactMode} />
           )}
         </div>
