@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useAuth } from './useAuth';
+import { useSync } from './useSync';
 
 // ============================================================================
-// Inner Compass v1.5
+// Inner Compass v1.8
 // 單人使用・中文介面・儀式感自我探索工具
 // ============================================================================
 
 const TOOL_CODE = 'inner-compass';
-const TOOL_VERSION = '1.7';
+const TOOL_VERSION = '1.8';
 const CURRENT_DATA_VERSION = 1;
 const lsKey = (key) => 'ic-v1-' + key;
 
@@ -464,7 +466,7 @@ function Modal({ open, onClose, title, children, theme, isMobile, wide }) {
 // HamburgerMenu
 // ============================================================================
 
-function HamburgerMenu({ open, onClose, theme, themeKey, onChangeTheme, onExportDaily, onImportDaily, isArtifactMode }) {
+function HamburgerMenu({ open, onClose, theme, themeKey, onChangeTheme, onExportDaily, user, syncStatus, lastSyncAt, onSyncNow, onSignIn, onSignOut }) {
   const ref = useRef(null);
   useEffect(() => {
     if (!open) return;
@@ -474,42 +476,119 @@ function HamburgerMenu({ open, onClose, theme, themeKey, onChangeTheme, onExport
   }, [open, onClose]);
   if (!open) return null;
 
+  const font = "'Noto Serif TC', serif";
   const itemStyle = {
     padding: '10px 16px', fontSize: 14, color: theme.t1, cursor: 'pointer',
     display: 'flex', alignItems: 'center', gap: 12, minHeight: 44,
-    transition: 'background 150ms ease-out',
-    fontFamily: "'Noto Serif TC', serif",
+    transition: 'background 150ms ease-out', fontFamily: font,
   };
   const sep = <div style={{ height: 1, background: theme.border, margin: '4px 16px' }} />;
+
+  function formatLastSync(ts) {
+    if (!ts) return '從未同步';
+    const diff = Date.now() - ts;
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return '剛剛';
+    if (mins < 60) return mins + ' 分鐘前';
+    const hours = Math.floor(diff / 3600000);
+    if (hours < 24) return hours + ' 小時前';
+    return Math.floor(diff / 86400000) + ' 天前';
+  }
 
   return (
     <div ref={ref} style={{
       position: 'absolute', top: 'calc(100% + 8px)', right: 0,
       background: theme.bgCard, border: '0.5px solid ' + theme.border, borderRadius: 12,
       boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-      minWidth: 240, maxWidth: 'calc(100vw - 32px)', padding: '8px 0', zIndex: 100,
+      minWidth: 260, maxWidth: 'calc(100vw - 32px)', padding: '8px 0', zIndex: 100,
     }}>
+      {/* 已登入：使用者資訊 */}
+      {user && (
+        <div style={{ padding: '10px 16px 12px', borderBottom: '0.5px solid ' + theme.border, marginBottom: 4 }}>
+          <div style={{ fontSize: 13, fontWeight: 500, color: theme.t1, fontFamily: font }}>{user.displayName || user.email?.split('@')[0]}</div>
+          <div style={{ fontSize: 11, color: theme.t3 }}>{user.email}</div>
+        </div>
+      )}
+
+      {/* 切換主題 */}
       <div style={itemStyle} onClick={onChangeTheme}
         onMouseEnter={(e) => e.currentTarget.style.background = theme.bgDeep}
         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
         <Icon name="palette" size={16} color={theme.t2} />
-        切換主題 ({themeKey === 'ritual-warm' ? '酒紅杏仁奶' : '玫瑰米白'})
+        切換主題（{themeKey === 'ritual-warm' ? '酒紅杏仁奶' : '玫瑰米白'}）
       </div>
       {sep}
+
+      {/* 匯出（快速） */}
       <div style={itemStyle} onClick={onExportDaily}
         onMouseEnter={(e) => e.currentTarget.style.background = theme.bgDeep}
         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
         <Icon name="download" size={16} color={theme.t2} />
-        匯出日常紀錄 JSON
+        匯出日常紀錄
       </div>
-      <div style={{ ...itemStyle, opacity: isArtifactMode ? 0.5 : 1, cursor: isArtifactMode ? 'default' : 'pointer' }}
-        onClick={isArtifactMode ? undefined : onImportDaily}
-        onMouseEnter={(e) => { if (!isArtifactMode) e.currentTarget.style.background = theme.bgDeep; }}
-        onMouseLeave={(e) => { if (!isArtifactMode) e.currentTarget.style.background = 'transparent'; }}>
+      <div style={{ ...itemStyle, opacity: 0.5, cursor: 'default' }}>
         <Icon name="upload" size={16} color={theme.t2} />
-        匯入日常紀錄 JSON
-        {isArtifactMode && <span style={{ fontSize: 11, color: theme.t3, marginLeft: 'auto' }}>請用設定頁</span>}
+        匯入請至設定頁
       </div>
+      {sep}
+
+      {/* 立即同步（已登入才顯示） */}
+      {user && (
+        <div style={{
+          ...itemStyle,
+          background: theme.accent + '12',
+          flexDirection: 'column', alignItems: 'flex-start', gap: 2,
+          cursor: syncStatus === 'syncing' ? 'default' : 'pointer',
+        }}
+          onClick={syncStatus === 'syncing' ? undefined : onSyncNow}
+          onMouseEnter={(e) => { if (syncStatus !== 'syncing') e.currentTarget.style.background = theme.accent + '20'; }}
+          onMouseLeave={(e) => e.currentTarget.style.background = theme.accent + '12'}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontWeight: 500 }}>
+            <Icon name="refresh" size={16} color={theme.accent} />
+            {syncStatus === 'syncing' ? '同步中…' : '立即同步'}
+          </div>
+          <div style={{ fontSize: 11, color: theme.t3, marginLeft: 28 }}>上次同步：{formatLastSync(lastSyncAt)}</div>
+        </div>
+      )}
+
+      {/* 登入 / 登出 */}
+      {user ? (
+        <div style={itemStyle} onClick={onSignOut}
+          onMouseEnter={(e) => e.currentTarget.style.background = theme.bgDeep}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+          <Icon name="logout" size={16} color={theme.t2} />
+          登出
+        </div>
+      ) : (
+        <div style={itemStyle} onClick={onSignIn}
+          onMouseEnter={(e) => e.currentTarget.style.background = theme.bgDeep}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+          <Icon name="login" size={16} color={theme.t2} />
+          登入（Google）
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// 同步狀態指示器
+// ============================================================================
+
+function SyncIndicator({ status, theme }) {
+  if (status === 'signedOut') return null;
+  const map = {
+    synced:  { name: 'cloudCheck', color: theme.t3 },
+    syncing: { name: 'cloudUpload', color: theme.accent },
+    offline: { name: 'cloudOff',   color: theme.t3 },
+    failed:  { name: 'cloudAlert', color: theme.coral },
+  };
+  const cur = map[status] || map.synced;
+  return (
+    <div style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <Icon name={cur.name} size={16} color={cur.color}
+        style={status === 'syncing' ? { animation: 'pulse 1.2s ease-in-out infinite' } : {}} />
     </div>
   );
 }
@@ -4092,7 +4171,7 @@ function DepthGaugePage({ theme, isMobile, relationship, onBack, onSave }) {
 // 設定頁
 // ============================================================================
 
-function SettingsPage({ theme, isMobile, themeKey, onChangeTheme, onExportDaily, onImportDaily, onExportRelationships, onImportRelationships, onExportReviews, onImportReviews, isArtifactMode }) {
+function SettingsPage({ theme, isMobile, themeKey, onChangeTheme, onExportDaily, onImportDaily, onExportRelationships, onImportRelationships, onExportReviews, onImportReviews, user, syncStatus, lastSyncAt, onSyncNow, onSignIn, onSignOut }) {
   const dailyFileRef = useRef(null);
   const relFileRef = useRef(null);
   const reviewsFileRef = useRef(null);
@@ -4178,6 +4257,48 @@ function SettingsPage({ theme, isMobile, themeKey, onChangeTheme, onExportDaily,
             <input ref={reviewsFileRef} type="file" accept="application/json" onChange={onImportReviews} style={{ display: 'none' }} />
           </div>
         </div>
+      </div>
+
+      {/* 帳號與同步 */}
+      <div style={{ ...cardStyle(theme), marginBottom: 16 }}>
+        <h3 style={{ margin: '0 0 12px', fontSize: 15, fontWeight: 500, color: theme.t1, fontFamily: font }}>帳號與同步</h3>
+        {user ? (
+          <div>
+            <div style={{ fontSize: 13, color: theme.t2, marginBottom: 12 }}>
+              <span style={{ color: theme.t1, fontWeight: 500 }}>{user.displayName || user.email?.split('@')[0]}</span>
+              <span style={{ color: theme.t3, fontSize: 11, display: 'block', marginTop: 2 }}>{user.email}</span>
+            </div>
+            <div style={{ fontSize: 12, color: theme.t3, marginBottom: 12 }}>
+              同步狀態：{syncStatus === 'synced' ? '已同步' : syncStatus === 'syncing' ? '同步中…' : syncStatus === 'offline' ? '離線' : '同步失敗'}
+              {lastSyncAt && <span>・上次：{(() => {
+                const diff = Date.now() - lastSyncAt;
+                const mins = Math.floor(diff / 60000);
+                if (mins < 1) return '剛剛';
+                if (mins < 60) return mins + ' 分鐘前';
+                return Math.floor(diff / 3600000) + ' 小時前';
+              })()}</span>}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={onSyncNow} disabled={syncStatus === 'syncing'}
+                style={{ ...btnSecondary(theme), flex: 1, display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', opacity: syncStatus === 'syncing' ? 0.5 : 1 }}>
+                <Icon name="refresh" size={16} color={theme.t2} />
+                立即同步
+              </button>
+              <button onClick={onSignOut} style={{ ...btnSecondary(theme), flex: 1, display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
+                <Icon name="logout" size={16} color={theme.t2} />
+                登出
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <div style={{ fontSize: 13, color: theme.t3, marginBottom: 12, lineHeight: 1.6 }}>登入後可跨裝置同步資料（手機 + 電腦）。</div>
+            <button onClick={onSignIn} style={{ ...btnPrimary(theme), width: '100%', display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
+              <Icon name="login" size={16} color={theme.accentText} />
+              使用 Google 登入
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 關於 */}
@@ -4288,15 +4409,26 @@ export default function App() {
     return () => window.removeEventListener('resize', h);
   }, []);
 
-  // 主題
-  const [themeKey, setThemeKey] = useState(() => {
-    const s = localStorage.getItem(lsKey('theme'));
-    return s && themes[s] ? s : 'ritual-warm';
-  });
-  useEffect(() => { localStorage.setItem(lsKey('theme'), themeKey); }, [themeKey]);
+  // ── Auth ───────────────────────────────────────────────────────────────────
+  const { user, login, logout } = useAuth();
+
+  // ── Sync（替代 15 個 useState + localStorage useEffect）─────────────────
+  const {
+    morningAnchors, sundayWitnesses, monthlySolos, smallCourages, ritualEntries,
+    relationships, depthGauges, groundFriends, groundFriendCheckIns, openMarks,
+    identificationAssessments, loweringProtocols, aiCompanionSessions,
+    quarterlyReviews, yearlyReviews, themeKey,
+    setMorningAnchors, setSundayWitnesses, setMonthlySolos, setSmallCourages, setRitualEntries,
+    setRelationships, setDepthGauges, setGroundFriends, setGroundFriendCheckIns, setOpenMarks,
+    setIdentificationAssessments, setLoweringProtocols, setAiCompanionSessions,
+    setQuarterlyReviews, setYearlyReviews, setThemeKey,
+    syncStatus, lastSyncAt, syncNow,
+    mergeModal, resolveUseCloud, resolveUseLocal,
+  } = useSync(user);
+
   const theme = themes[themeKey];
 
-  // 頁面導航
+  // ── 頁面導航 ────────────────────────────────────────────────────────────
   const [currentPage, setCurrentPage] = useState(PAGES.HOME);
   const [pageParams, setPageParams] = useState({});
   const [relSubPage, setRelSubPage] = useState({ type: 'list' });
@@ -4305,71 +4437,6 @@ export default function App() {
     if (page === PAGES.RELATIONSHIP) setRelSubPage({ type: 'list' });
     if (tab) setPageParams(p => ({ ...p, [page]: { tab } }));
   }, []);
-
-  // ---- 資料狀態 ----
-  const [morningAnchors, setMorningAnchors] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(lsKey('morningAnchors')) || '[]'); } catch { return []; }
-  });
-  const [sundayWitnesses, setSundayWitnesses] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(lsKey('sundayWitnesses')) || '[]'); } catch { return []; }
-  });
-  const [monthlySolos, setMonthlySolos] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(lsKey('monthlySolos')) || '[]'); } catch { return []; }
-  });
-  const [smallCourages, setSmallCourages] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(lsKey('smallCourages')) || '[]'); } catch { return []; }
-  });
-  const [ritualEntries, setRitualEntries] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(lsKey('ritualEntries')) || '[]'); } catch { return []; }
-  });
-
-  // 持久化
-  useEffect(() => { localStorage.setItem(lsKey('morningAnchors'), JSON.stringify(morningAnchors)); }, [morningAnchors]);
-  useEffect(() => { localStorage.setItem(lsKey('sundayWitnesses'), JSON.stringify(sundayWitnesses)); }, [sundayWitnesses]);
-  useEffect(() => { localStorage.setItem(lsKey('monthlySolos'), JSON.stringify(monthlySolos)); }, [monthlySolos]);
-  useEffect(() => { localStorage.setItem(lsKey('smallCourages'), JSON.stringify(smallCourages)); }, [smallCourages]);
-  useEffect(() => { localStorage.setItem(lsKey('ritualEntries'), JSON.stringify(ritualEntries)); }, [ritualEntries]);
-
-  const [relationships, setRelationships] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(lsKey('relationships')) || '[]'); } catch { return []; }
-  });
-  const [depthGauges, setDepthGauges] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(lsKey('depthGauges')) || '[]'); } catch { return []; }
-  });
-  const [groundFriends, setGroundFriends] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(lsKey('groundFriends')) || '[]'); } catch { return []; }
-  });
-  const [groundFriendCheckIns, setGroundFriendCheckIns] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(lsKey('groundFriendCheckIns')) || '[]'); } catch { return []; }
-  });
-  const [openMarks, setOpenMarks] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(lsKey('openMarks')) || '[]'); } catch { return []; }
-  });
-  const [identificationAssessments, setIdentificationAssessments] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(lsKey('identificationAssessments')) || '[]'); } catch { return []; }
-  });
-  const [loweringProtocols, setLoweringProtocols] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(lsKey('loweringProtocols')) || '[]'); } catch { return []; }
-  });
-  const [aiCompanionSessions, setAiCompanionSessions] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(lsKey('aiCompanionSessions')) || '[]'); } catch { return []; }
-  });
-  const [quarterlyReviews, setQuarterlyReviews] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(lsKey('quarterlyReviews')) || '[]'); } catch { return []; }
-  });
-  const [yearlyReviews, setYearlyReviews] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(lsKey('yearlyReviews')) || '[]'); } catch { return []; }
-  });
-  useEffect(() => { localStorage.setItem(lsKey('relationships'), JSON.stringify(relationships)); }, [relationships]);
-  useEffect(() => { localStorage.setItem(lsKey('depthGauges'), JSON.stringify(depthGauges)); }, [depthGauges]);
-  useEffect(() => { localStorage.setItem(lsKey('groundFriends'), JSON.stringify(groundFriends)); }, [groundFriends]);
-  useEffect(() => { localStorage.setItem(lsKey('groundFriendCheckIns'), JSON.stringify(groundFriendCheckIns)); }, [groundFriendCheckIns]);
-  useEffect(() => { localStorage.setItem(lsKey('openMarks'), JSON.stringify(openMarks)); }, [openMarks]);
-  useEffect(() => { localStorage.setItem(lsKey('identificationAssessments'), JSON.stringify(identificationAssessments)); }, [identificationAssessments]);
-  useEffect(() => { localStorage.setItem(lsKey('loweringProtocols'), JSON.stringify(loweringProtocols)); }, [loweringProtocols]);
-  useEffect(() => { localStorage.setItem(lsKey('aiCompanionSessions'), JSON.stringify(aiCompanionSessions)); }, [aiCompanionSessions]);
-  useEffect(() => { localStorage.setItem(lsKey('quarterlyReviews'), JSON.stringify(quarterlyReviews)); }, [quarterlyReviews]);
-  useEffect(() => { localStorage.setItem(lsKey('yearlyReviews'), JSON.stringify(yearlyReviews)); }, [yearlyReviews]);
 
   // Toast
   const [toasts, setToasts] = useState([]);
@@ -4383,7 +4450,6 @@ export default function App() {
 
   // UI
   const [menuOpen, setMenuOpen] = useState(false);
-  const isArtifactMode = true;
 
   // ---- 資料操作 ----
   const saveMorning = useCallback((entry) => {
@@ -4681,6 +4747,7 @@ export default function App() {
         @keyframes toastIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes pulseDot { 0%, 100% { opacity: 0.55; transform: scale(1); } 50% { opacity: 1; transform: scale(1.5); } }
+        @keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
         @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
         button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid ${theme.accent}; outline-offset: 2px; }
         input::placeholder, textarea::placeholder { color: ${theme.t3}; }
@@ -4699,7 +4766,8 @@ export default function App() {
           <div style={{ fontSize: 17, fontWeight: 500, color: theme.t1, fontFamily, letterSpacing: '0.04em' }}>
             Inner Compass
           </div>
-          <div style={{ position: 'relative' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, position: 'relative' }}>
+            <SyncIndicator status={syncStatus} theme={theme} />
             <button onClick={(e) => { e.stopPropagation(); setMenuOpen(v => !v); }} style={{
               background: 'transparent', border: 'none', color: theme.t1, cursor: 'pointer', padding: 6,
               borderRadius: 6, display: 'flex', alignItems: 'center', minWidth: 32, minHeight: 32,
@@ -4709,10 +4777,12 @@ export default function App() {
             <HamburgerMenu
               open={menuOpen} onClose={() => setMenuOpen(false)}
               theme={theme} themeKey={themeKey}
-              onChangeTheme={(k) => { setThemeKey(k === 'ritual-warm' ? 'ritual-light' : 'ritual-warm'); setMenuOpen(false); }}
+              onChangeTheme={() => { setThemeKey(themeKey === 'ritual-warm' ? 'ritual-light' : 'ritual-warm'); setMenuOpen(false); }}
               onExportDaily={() => { handleExportDaily(); setMenuOpen(false); }}
-              onImportDaily={handleImportDaily}
-              isArtifactMode={isArtifactMode}
+              user={user} syncStatus={syncStatus} lastSyncAt={lastSyncAt}
+              onSyncNow={() => { syncNow(); setMenuOpen(false); }}
+              onSignIn={() => { login(); setMenuOpen(false); }}
+              onSignOut={() => { logout(); setMenuOpen(false); }}
             />
           </div>
         </header>
@@ -4811,13 +4881,40 @@ export default function App() {
               onImportRelationships={handleImportRelationships}
               onExportReviews={handleExportReviews}
               onImportReviews={handleImportReviews}
-              isArtifactMode={isArtifactMode} />
+              user={user} syncStatus={syncStatus} lastSyncAt={lastSyncAt}
+              onSyncNow={syncNow} onSignIn={login} onSignOut={logout} />
           )}
         </div>
       </div>
 
       {/* 底部導航 (mobile) */}
       {isMobile && <BottomNav currentPage={currentPage} onNavigate={navigate} theme={theme} />}
+
+      {/* 雲端資料合併確認 Modal */}
+      {mergeModal && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 2000, padding: 16,
+        }}>
+          <div style={{
+            background: theme.bgCard, borderRadius: 12, padding: 24,
+            maxWidth: 380, width: '100%',
+            border: '0.5px solid ' + theme.border,
+          }}>
+            <div style={{ fontSize: 16, fontWeight: 500, color: theme.t1, marginBottom: 10, fontFamily: "'Noto Serif TC', serif" }}>
+              偵測到雲端資料
+            </div>
+            <div style={{ fontSize: 14, color: theme.t2, lineHeight: 1.7, marginBottom: 20 }}>
+              雲端和本機都有資料，要用哪一份？
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={resolveUseLocal} style={{ ...btnSecondary(theme), flex: 1 }}>用本機資料</button>
+              <button onClick={resolveUseCloud} style={{ ...btnPrimary(theme), flex: 1 }}>用雲端資料</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Toast */}
       <ToastContainer toasts={toasts} onDismiss={dismissToast} theme={theme} isMobile={isMobile} />
