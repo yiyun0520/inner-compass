@@ -78,6 +78,7 @@ export function useSync(user) {
 
   // ── Firestore write (single collection) ──────────────────────────────────
   const writeCol = useCallback(async (uid, colKey, data) => {
+    if (!db) return;
     try {
       await setDoc(fsPath(uid, colKey), { items: data, updatedAt: serverTimestamp() });
     } catch (e) {
@@ -87,6 +88,7 @@ export function useSync(user) {
   }, []);
 
   const writeSettings = useCallback(async (uid, key) => {
+    if (!db) return;
     try {
       await setDoc(fsPath(uid, '_settings'), { themeKey: key, updatedAt: serverTimestamp() });
     } catch (e) {
@@ -133,6 +135,7 @@ export function useSync(user) {
 
   // ── Load all data from Firestore ──────────────────────────────────────────
   const loadCloud = useCallback(async (uid) => {
+    if (!db) return Object.fromEntries([...COLLECTIONS.map(c => [c, null]), ['_settings', null]]);
     const results = {};
     await Promise.all([
       ...COLLECTIONS.map(async (col) => {

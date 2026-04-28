@@ -7,6 +7,7 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!auth) { setLoading(false); return; }
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setLoading(false);
@@ -14,8 +15,8 @@ export function useAuth() {
     return unsub;
   }, []);
 
-  const login = () => signInWithPopup(auth, googleProvider);
-  const logout = () => signOut(auth);
+  const login = () => auth ? signInWithPopup(auth, googleProvider) : Promise.reject('no firebase config');
+  const logout = () => auth ? signOut(auth) : Promise.resolve();
 
   return { user, loading, login, logout };
 }
