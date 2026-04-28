@@ -924,12 +924,11 @@ function MorningAnchorRow({ entry, theme, isTouch, onSave, onDelete }) {
   const [editing, setEditing] = useState(false);
   const [editState, setEditState] = useState(entry.stateDescription || '');
   const [editProtect, setEditProtect] = useState(entry.protectIntent || '');
-  const [editAllow, setEditAllow] = useState(entry.allowIntent || '');
   const showActions = isTouch || hov;
 
   const handleSaveEdit = () => {
     if (!editState.trim() && !editProtect.trim()) return;
-    onSave({ ...entry, stateDescription: editState.trim(), protectIntent: editProtect.trim(), allowIntent: editAllow.trim() });
+    onSave({ ...entry, stateDescription: editState.trim(), protectIntent: editProtect.trim() });
     setEditing(false);
   };
 
@@ -945,11 +944,6 @@ function MorningAnchorRow({ entry, theme, isTouch, onSave, onDelete }) {
           <div style={{ fontSize: 11, color: theme.t3, marginBottom: 4 }}>我想保護什麼</div>
           <AutoTextarea value={editProtect} onChange={e => setEditProtect(e.target.value)}
             placeholder="想保護的…" style={{ ...inputStyle(theme), fontSize: 14 }} minRows={1} />
-        </div>
-        <div>
-          <div style={{ fontSize: 11, color: theme.t3, marginBottom: 4 }}>我允許什麼發生（選填）</div>
-          <AutoTextarea value={editAllow} onChange={e => setEditAllow(e.target.value)}
-            placeholder="允許的… （選填）" style={{ ...inputStyle(theme), fontSize: 14 }} minRows={1} />
         </div>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button onClick={() => setEditing(false)} style={btnSecondary(theme)}>取消</button>
@@ -967,7 +961,7 @@ function MorningAnchorRow({ entry, theme, isTouch, onSave, onDelete }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           {entry.stateDescription && (
-            <div style={{ marginBottom: entry.protectIntent || entry.allowIntent ? 8 : 0 }}>
+            <div style={{ marginBottom: entry.protectIntent ? 8 : 0 }}>
               <div style={{ fontSize: 11, color: theme.t3, marginBottom: 3, display: 'flex', alignItems: 'center', gap: 4 }}>
                 <Icon name="feather" size={11} color={theme.t3} />
                 說出來
@@ -976,15 +970,9 @@ function MorningAnchorRow({ entry, theme, isTouch, onSave, onDelete }) {
             </div>
           )}
           {entry.protectIntent && (
-            <div style={{ marginBottom: entry.allowIntent ? 8 : 0 }}>
+            <div style={{ marginBottom: 0 }}>
               <div style={{ fontSize: 11, color: theme.t3, marginBottom: 3 }}>保護</div>
               <div style={{ fontSize: 14, color: theme.t1, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{entry.protectIntent}</div>
-            </div>
-          )}
-          {entry.allowIntent && (
-            <div>
-              <div style={{ fontSize: 11, color: theme.t3, marginBottom: 3 }}>允許</div>
-              <div style={{ fontSize: 14, color: theme.t1, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{entry.allowIntent}</div>
             </div>
           )}
           {confirmDelete && (
@@ -999,7 +987,7 @@ function MorningAnchorRow({ entry, theme, isTouch, onSave, onDelete }) {
         </div>
         {showActions && !confirmDelete && (
           <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
-            <button onClick={() => { setEditing(true); setEditState(entry.stateDescription || ''); setEditProtect(entry.protectIntent || ''); setEditAllow(entry.allowIntent || ''); }} style={{
+            <button onClick={() => { setEditing(true); setEditState(entry.stateDescription || ''); setEditProtect(entry.protectIntent || ''); }} style={{
               background: 'transparent', border: 'none', cursor: 'pointer', color: theme.t3, padding: 6,
               borderRadius: 6, minWidth: 32, minHeight: 32, display: 'flex', alignItems: 'center',
             }}><Icon name="edit" size={13} /></button>
@@ -1025,13 +1013,11 @@ function MorningAnchorTab({ theme, isMobile, morningAnchors, onSave, onDelete })
   const [isEditing, setIsEditing] = useState(!todayEntry);
   const [state, setState] = useState(todayEntry?.stateDescription || '');
   const [protect, setProtect] = useState(todayEntry?.protectIntent || '');
-  const [allow, setAllow] = useState(todayEntry?.allowIntent || '');
 
   useEffect(() => {
     if (todayEntry && !isEditing) {
       setState(todayEntry.stateDescription || '');
       setProtect(todayEntry.protectIntent || '');
-      setAllow(todayEntry.allowIntent || '');
     }
   }, [todayEntry, isEditing]);
 
@@ -1042,7 +1028,6 @@ function MorningAnchorTab({ theme, isMobile, morningAnchors, onSave, onDelete })
       date: today,
       stateDescription: state.trim(),
       protectIntent: protect.trim(),
-      allowIntent: allow.trim(),
       createdAt: todayEntry?.createdAt || Date.now(),
     });
     setIsEditing(false);
@@ -1069,19 +1054,14 @@ function MorningAnchorTab({ theme, isMobile, morningAnchors, onSave, onDelete })
         {isEditing ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div>
-              <label style={labelStyle}>今天我是什麼狀態</label>
+              <label style={labelStyle}>今天我是什麼樣的狀態？</label>
               <AutoTextarea value={state} onChange={e => setState(e.target.value)}
-                placeholder="身體、情緒、能量…" style={inputStyle(theme)} minRows={2} />
+                placeholder="感受身體躺在床上的重量、情緒、能量…" style={inputStyle(theme)} minRows={2} />
             </div>
             <div>
-              <label style={labelStyle}>我想保護什麼</label>
+              <label style={labelStyle}>今天我想保護什麼？</label>
               <AutoTextarea value={protect} onChange={e => setProtect(e.target.value)}
-                placeholder="今天想守住的事…" style={inputStyle(theme)} minRows={2} />
-            </div>
-            <div>
-              <label style={labelStyle}>我允許什麼發生 <span style={{ color: theme.t3, fontSize: 11 }}>(選填)</span></label>
-              <AutoTextarea value={allow} onChange={e => setAllow(e.target.value)}
-                placeholder="今天願意放開的事…" style={inputStyle(theme)} minRows={2} />
+                placeholder="可能是某個專注時段、某個情緒空間、某個界線" style={inputStyle(theme)} minRows={2} />
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               {todayEntry && <button onClick={() => setIsEditing(false)} style={btnSecondary(theme)}>取消</button>}
@@ -1100,12 +1080,6 @@ function MorningAnchorTab({ theme, isMobile, morningAnchors, onSave, onDelete })
               <div style={{ marginBottom: 12 }}>
                 <div style={{ fontSize: 12, color: theme.t3, marginBottom: 4 }}>想保護的</div>
                 <div style={{ fontSize: 15, color: theme.t1, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{todayEntry.protectIntent}</div>
-              </div>
-            )}
-            {todayEntry.allowIntent && (
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 12, color: theme.t3, marginBottom: 4 }}>允許的</div>
-                <div style={{ fontSize: 15, color: theme.t1, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{todayEntry.allowIntent}</div>
               </div>
             )}
             <button onClick={() => setIsEditing(true)} style={btnSecondary(theme)}>修改今天的</button>
@@ -1153,7 +1127,7 @@ function MorningAnchorTab({ theme, isMobile, morningAnchors, onSave, onDelete })
 
 function SundayWitnessFlow({ theme, isMobile, witness, onSave, onCancel }) {
   const [step, setStep] = useState(1);
-  const [wellDoneItems, setWellDoneItems] = useState(witness?.wellDoneItems || ['']);
+  const [wellDoneItems, setWellDoneItems] = useState(witness?.wellDoneItems?.length ? witness.wellDoneItems : ['', '', '']);
   const [selfSeen, setSelfSeen] = useState(witness?.selfSeen || '');
   const [selfThanks, setSelfThanks] = useState(witness?.selfThanks || '');
   const [weather, setWeather] = useState(witness?.emotionalWeather || []);
@@ -1216,7 +1190,7 @@ function SundayWitnessFlow({ theme, isMobile, witness, onSave, onCancel }) {
         <h3 style={{ fontSize: 18, fontWeight: 500, color: theme.t1, marginBottom: 8, fontFamily: "'Noto Serif TC', serif" }}>
           這週我做得好的事
         </h3>
-        <p style={{ fontSize: 13, color: theme.t3, fontStyle: 'italic', marginBottom: 20 }}>具體的,不是抽象的。</p>
+        <p style={{ fontSize: 13, color: theme.t3, fontStyle: 'italic', marginBottom: 20 }}>具體的，不是抽象的。不是『認真工作』，是『週三那個會議我發言得很好』。</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {wellDoneItems.map((item, idx) => (
             <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
@@ -1252,7 +1226,7 @@ function SundayWitnessFlow({ theme, isMobile, witness, onSave, onCancel }) {
         <h3 style={{ fontSize: 18, fontWeight: 500, color: theme.t1, marginBottom: 8, fontFamily: "'Noto Serif TC', serif" }}>
           這週我看見的自己
         </h3>
-        <p style={{ fontSize: 13, color: theme.t3, fontStyle: 'italic', marginBottom: 20 }}>一個特徵、一個模式、一個情緒都可以。</p>
+        <p style={{ fontSize: 13, color: theme.t3, fontStyle: 'italic', marginBottom: 20 }}>一個特徵、一個模式、一個情緒都可以。像在看著另一個你。</p>
         <AutoTextarea value={selfSeen} onChange={e => setSelfSeen(e.target.value)}
           placeholder="我看見一個…" style={inputStyle(theme)} minRows={4} />
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 24 }}>
@@ -1292,7 +1266,7 @@ function SundayWitnessFlow({ theme, isMobile, witness, onSave, onCancel }) {
         <h3 style={{ fontSize: 18, fontWeight: 500, color: theme.t1, marginBottom: 8, fontFamily: "'Noto Serif TC', serif" }}>
           這週的情緒天氣
         </h3>
-        <p style={{ fontSize: 13, color: theme.t3, fontStyle: 'italic', marginBottom: 20 }}>可以多選。</p>
+        <p style={{ fontSize: 13, color: theme.t3, fontStyle: 'italic', marginBottom: 20 }}>可以多選（這週有晴有雨很正常）</p>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           {WEATHER_OPTIONS.map(w => {
             const selected = weather.includes(w.id);
@@ -1371,6 +1345,9 @@ function WitnessExpandCard({ w, theme, isCurrentWeek, defaultOpen }) {
         display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', flex: 1 }}>
+          {w.weekStartDate && (
+            <span style={{ fontSize: 11, color: theme.t3 }}>{weekDateRange(w.weekStartDate)}</span>
+          )}
           <div style={{ display: 'flex', gap: 4 }}>
             {w.emotionalWeather?.map(weather => (
               <WeatherIcon key={weather} type={weather} size={15} color={open ? theme.accent : theme.t2} />
@@ -1650,10 +1627,10 @@ function MonthlySoloTab({ theme, isMobile, monthlySolos, onSave, onDelete }) {
   const [quality, setQuality] = useState(thisSolo?.quality || '');
 
   const qualityOptions = [
-    { id: 'nourishing', label: '滋養' },
-    { id: 'steady', label: '穩定' },
-    { id: 'challenging', label: '挑戰' },
-    { id: 'misaligned', label: '不對盤' },
+    { id: 'nourishing', label: '🌿滋養' },
+    { id: 'steady', label: '🪨平穩' },
+    { id: 'challenging', label: '🌊挑戰' },
+    { id: 'misaligned', label: '🫥錯位' },
   ];
 
   const handleSavePlan = () => {
@@ -1844,15 +1821,17 @@ function DailyPage({ theme, isMobile, initialTab, morningAnchors, sundayWitnesse
   ];
 
   const purposeMap = {
-    morning: `在一天的喧鬧開始之前，先回到自己這裡。\n\n不是為了計畫，而是為了看見此刻的你——不評判，不期待。哪怕只有一句話，也算到了。`,
-    witness: `每週給自己 30 分鐘，見證這一週真實活過的樣子。\n\n不評分，不比較，不要問「這週夠好嗎？」——只是陪著自己好好看見。你是自己的見證人，不是審判者。見證本身就是療癒。`,
-    monthly: `一個人的時間是充電，不是逃跑。\n\n每個月給自己一天（或半天），讓自己重新找回自己的重心。可以是獨自散步、看一本書、在咖啡廳發呆——任何讓你覺得「這是我的時間」的事都算。\n\n做什麼：事先規劃好，當天不做「應該做」的事，只做滋養自己的事。\n不做什麼：不刷社群、不回工作訊息、不討論別人的事。`,
+    morning: `在一天的喧鬧開始之前，先回到自己這裡。\n不是為了計畫，而是為了看見此刻的你——不評判，不期待。哪怕只有一句話，也算到了。`,
+    witness: `每週給自己 30 分鐘，見證這一週真實活過的樣子。\n不評分，不比較，不要問「這週夠好嗎？」——只是陪著自己好好看見。\n\n你是自己的見證人，不是審判者。見證本身就是療癒。`,
+    monthly: `每個月給自己一天（或半天），找回自己的重心。\n✦做：任何讓你覺得「我在這裡」的事——可以是讀一本放很久的書、在咖啡廳發呆、什麼都不計畫地走走。只要你是跟著自己的節奏走，都算。\n◌ 放下：輕輕放下那些讓你「不在了」的事——社群、訊息、追劇、YouTube……任何讓你一直在接收、卻離自己越來越遠的事，今天都可以先放著。`,
   };
 
   return (
     <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '20px 16px 100px' : '32px 24px 80px' }}>
-      <h2 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 500, color: theme.t1, fontFamily: "'Noto Serif TC', serif" }}>日常層</h2>
-      <p style={{ margin: '0 0 24px', fontSize: 13, color: theme.t3, fontStyle: 'italic' }}>自我見證的基礎練習</p>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, margin: '0 0 24px' }}>
+        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 500, color: theme.t1, fontFamily: "'Noto Serif TC', serif" }}>日常層</h2>
+        <p style={{ margin: 0, fontSize: 13, color: theme.t3, fontStyle: 'italic' }}> 自我見證的基礎練習</p>
+      </div>
       {/* 等寬底線型 Tab */}
       <div style={{ display: 'flex', borderBottom: '1.5px solid ' + theme.border, marginBottom: 24 }}>
         {tabs.map(t => (
@@ -2175,16 +2154,13 @@ function RitualPage({ theme, isMobile, ritualEntries, onSave, onDelete, onEdit }
 
   return (
     <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '20px 16px 100px' : '32px 24px 80px' }}>
-      <h2 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 500, color: theme.t1, fontFamily: font }}>
-        儀式菜單
-      </h2>
-      <p style={{ margin: '0 0 8px', fontSize: 13, color: theme.t3, fontStyle: 'italic' }}>
-        想做就做，不做沒關係
-      </p>
-      <p style={{ margin: '0 0 28px', fontSize: 13, color: theme.t2, fontStyle: 'italic', lineHeight: 1.7, paddingLeft: 12, borderLeft: '2px solid ' + theme.accentLight }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, margin: '0 0 8px' }}>
+       <h2 style={{ margin: 0, fontSize: 20, fontWeight: 500, color: theme.t1, fontFamily: font }}>儀式菜單</h2>
+       <p style={{ margin: 0, fontSize: 13, color: theme.t3, fontStyle: 'italic' }}>想做就做，不做沒關係</p>
+       <p style={{ margin: '0 0 28px', fontSize: 13, color: theme.t2, fontStyle: 'italic', lineHeight: 1.7, paddingLeft: 12, borderLeft: '2px solid ' + theme.accentLight }}>
         儀式的意義不在於「完成」，而在於你有意識地為自己創造一個空間。哪怕只做了其中一個步驟，哪怕只是翻開這個頁面想了想——也算。
       </p>
-
+      </div>
       {RITUAL_TYPES.map(ritual => (
         <RitualCard key={ritual.id} ritual={ritual} theme={theme} onRecord={(data) => onSave({ id: genId(), date: todayStr(), ...data, createdAt: Date.now() })} />
       ))}
@@ -2791,6 +2767,21 @@ function GroundFriendTab({ theme, isMobile, groundFriends, groundFriendCheckIns,
             <div style={{ fontSize: 12, color: theme.t3, marginBottom: 6, fontFamily: font }}>他／她對你的意義</div>
             <AutoTextarea value={role} onChange={e => setRole(e.target.value)} placeholder="例：讓我記得自己是誰的人" style={{ ...iStyle, width: '100%' }} minRows={2} />
           </div>
+          <div style={{ background: theme.bgDeep, borderRadius: 8, padding: '12px 14px' }}>
+            <div style={{ fontSize: 11, color: theme.t3, marginBottom: 8, fontFamily: font, letterSpacing: '0.04em' }}>地面朋友的選擇標準</div>
+            {[
+              '直接，不會跟你一起說服自己',
+              '認識「談戀愛以前的你」',
+              '你信任他說真話，即使難聽',
+            ].map((c, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: i < 2 ? 6 : 0 }}>
+                <div style={{ width: 16, height: 16, borderRadius: '50%', background: theme.accentLight, border: '0.5px solid ' + theme.accent + '60', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
+                  <span style={{ fontSize: 9, color: theme.accent, fontWeight: 600 }}>{i + 1}</span>
+                </div>
+                <span style={{ fontSize: 12, color: theme.t2, fontFamily: font, lineHeight: 1.5 }}>{c}</span>
+              </div>
+            ))}
+          </div>
           {activeRels.length > 0 && (
             <div>
               <div style={{ fontSize: 12, color: theme.t3, marginBottom: 6, fontFamily: font }}>指派為哪段關係的地面朋友（選填）</div>
@@ -2879,14 +2870,14 @@ function GroundFriendTab({ theme, isMobile, groundFriends, groundFriendCheckIns,
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
         <div>
           <div style={{ fontSize: 18, fontWeight: 500, color: theme.t1, fontFamily: font }}>地面朋友</div>
-          <div style={{ fontSize: 12, color: theme.t3, marginTop: 4, fontFamily: font, fontStyle: 'italic' }}>讓你記得自己是誰的人</div>
+          <div style={{ fontSize: 12, color: theme.t3, marginTop: 4, fontFamily: font, fontStyle: 'italic' }}>喜歡你這個人，不只喜歡戀愛中的你</div>
         </div>
         {!adding && !editingFriendId && groundFriends.length < 3 && (
           <button onClick={() => setAdding(true)} style={{ ...btnPrimary(theme, false), padding: '8px 16px', fontSize: 13 }}>新增朋友</button>
         )}
       </div>
       <div style={{ fontSize: 13, color: theme.t2, lineHeight: 1.7, marginBottom: 20, fontFamily: font }}>
-        在關係裡最容易迷失自己。地面朋友是能把你拉回地面的人——他認識「完整的你」，不是「在關係裡的你」。定期和他對話，確認你還在。
+        戀愛會讓人漂起來——漂得很甜，但也很容易飄走。地面朋友的任務很簡單：每兩週跟你說一次話，把你拉回來。不是要他們評論你的對象，是要他們看著你。
       </div>
 
       {adding && <FriendForm friend={null} onSave={onSaveFriend} onCancel={() => setAdding(false)} />}
@@ -3501,17 +3492,28 @@ function RelationshipSupportPage({ theme, isMobile, relationships, groundFriends
   const [activeTab, setActiveTab] = useState('ground');
   const isAI = activeTab === 'ai';
 
+  const purposeMap = {
+    ground: '戀愛會讓人漂起來。地面朋友的任務很簡單：每兩週跟你說一次話，把你拉回來。\n不是要他們評論你的對象，是要他們看著你。',
+    identify: '三十天、五項核對、三個 deal breaker——在關係成形前，先看清楚你在進入什麼。',
+    lower: '當你意識到捲入太深，這裡有一份 14 天的回歸清單。不是懲罰，是把重心拿回來。',
+    open: '在確認是否追蹤之前，給自己 14 天的觀察窗口——只是看，不是決定。',
+    ai: 'Raman 在這裡。她不會跟你一起說服自己，她只陪你看見。',
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: isAI ? (isMobile ? 'calc(100dvh - 56px)' : '100dvh') : 'auto', minHeight: isAI ? undefined : 'auto' }}>
       <div style={{ padding: isMobile ? '16px 16px 0' : '20px 24px 0', background: theme.bg, flexShrink: 0 }}>
-        <h2 style={{ margin: '0 0 12px', fontSize: 20, fontWeight: 500, color: theme.t1, fontFamily: font }}>關係支援</h2>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, margin: '0 0 16px' }}>
+          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 500, color: theme.t1, fontFamily: font }}>關係支援</h2>
+          <p style={{ margin: 0, fontSize: 13, color: theme.t3, fontStyle: 'italic' }}>深度關係的自我見證工具</p>
+        </div>
       </div>
       <div style={{ display: 'flex', borderBottom: '1.5px solid ' + theme.border, background: theme.bg, flexShrink: 0 }}>
         {tabs.map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
             flex: 1, background: 'transparent', border: 'none', cursor: 'pointer',
             color: activeTab === tab.id ? theme.accent : theme.t3, fontFamily: font,
-            fontSize: isMobile ? 11 : 13,
+            fontSize: 14,
             borderBottom: activeTab === tab.id ? '2px solid ' + theme.accent : '2px solid transparent',
             padding: '11px 4px', marginBottom: -1.5,
             fontWeight: activeTab === tab.id ? 500 : 400,
@@ -3519,6 +3521,13 @@ function RelationshipSupportPage({ theme, isMobile, relationships, groundFriends
           }}>{tab.label}</button>
         ))}
       </div>
+      {!isAI && (
+        <div style={{ padding: isMobile ? '16px 16px 0' : '16px 24px 0', background: theme.bg }}>
+          <p style={{ margin: 0, fontSize: 13, color: theme.t2, fontStyle: 'italic', lineHeight: 1.7, paddingLeft: 12, borderLeft: '2px solid ' + theme.accentLight, whiteSpace: 'pre-wrap' }}>
+            {purposeMap[activeTab]}
+          </p>
+        </div>
+      )}
       <div style={{ flex: 1, overflow: isAI ? 'hidden' : 'auto' }}>
         {activeTab === 'ground' && <GroundFriendTab theme={theme} isMobile={isMobile} groundFriends={groundFriends} groundFriendCheckIns={groundFriendCheckIns} relationships={relationships} onSaveFriend={onSaveFriend} onDeleteFriend={onDeleteFriend} onSaveCheckIn={onSaveCheckIn} />}
         {activeTab === 'identify' && <IdentificationTab theme={theme} isMobile={isMobile} relationships={relationships} identificationAssessments={identificationAssessments} onSaveAssessment={onSaveAssessment} />}
@@ -4535,13 +4544,88 @@ function RelationshipDetailPage({ theme, isMobile, relationship, depthGauges, on
 // ============================================================================
 
 const GAUGE_QUESTIONS = [
-  { key: 'q1', label: '想念佔思緒幾成', lo: '完全沒有', mid: '偶爾想起', hi: '幾乎佔滿思緒' },
-  { key: 'q2', label: '為他改變自己多少', lo: '完全沒有', mid: '有些小調整', hi: '大幅改變自己' },
-  { key: 'q3', label: '訊息晚回的情緒波動', lo: '完全平靜', mid: '有些焦慮', hi: '嚴重焦慮' },
-  { key: 'q4', label: '忽略自己配合他', lo: '完全沒有', mid: '偶爾讓步', hi: '常常忽略自己' },
-  { key: 'q5', label: '聊他的時間占比', lo: '完全沒有', mid: '話題中一半', hi: '幾乎都在聊他' },
-  { key: 'q6', label: '他消失會塌幾成', lo: '完全不受影響', mid: '會有衝擊', hi: '感覺會崩塌' },
+  { key: 'q1', label: 'Q1　思念佔我一天思緒的幾成？', hint: '衡量他在你意識中的背景佔比', lo: '完全沒有', mid: '偶爾想起', hi: '幾乎佔滿思緒' },
+  { key: 'q2', label: 'Q2　我有多願意為他改變自己的節奏／習慣／原則？', hint: '衡量你為這段關係讓渡自我的程度', lo: '完全沒有', mid: '有些小調整', hi: '大幅改變自己' },
+  { key: 'q3', label: 'Q3　他訊息晚回時，我的情緒波動有多大？', hint: '衡量你對他回應的情緒依賴程度', lo: '完全平靜', mid: '有些焦慮', hi: '嚴重焦慮' },
+  { key: 'q4', label: 'Q4　我最近有多常忽略自己的感受來配合他？', hint: '衡量自我消音的頻率與深度', lo: '完全沒有', mid: '偶爾讓步', hi: '常常忽略自己' },
+  { key: 'q5', label: 'Q5　我跟朋友聊他，佔聊天時間的幾成？', hint: '衡量他在你社交語言中的佔比', lo: '完全沒有', mid: '話題中一半', hi: '幾乎都在聊他' },
+  { key: 'q6', label: 'Q6　如果他明天消失，我會塌掉幾成？', hint: '衡量他對你存在感／穩定感的結構性影響', lo: '完全不受影響', mid: '會有衝擊', hi: '感覺會崩塌' },
 ];
+
+const GAUGE_SCORE_DETAILS = {
+  q1: [
+    '幾乎不主動想起，偶爾被觸發才浮現一下，隨即消散',
+    '一天想起 1–2 次，是輕盈的念頭，不會主動延伸',
+    '一天 3–4 次，通常有事情觸發，不是憑空冒出來的',
+    '零碎時間幾乎都在想他，專心工作時才暫時關掉',
+    '時常想，腦海有個背景音幾乎都是他，很難真正放空',
+    '不在想他就覺得哪裡空了，純粹專注已經很難做到',
+    '幾乎全天候，沒有他的消息就感覺失去方向',
+    '思緒幾乎被他佔滿，其他事情都像噪音，很難聽進去',
+    '清醒時腦海只有他，連入睡前都是他，幾乎沒有自己的內在空間',
+    '100%。他的存在/不存在完全決定了這一天是否有意義',
+  ],
+  q2: [
+    '不會為他改變，對方若不配合就放著，沒有壓力',
+    '願意稍微調整時間或習慣，但心裡清楚底線在哪',
+    '為他調整節奏，明顯感覺到自己在讓步，但覺得值得',
+    '主動調整生活節奏去配合他，有時事後才意識到自己讓了',
+    '改變了一些重要習慣或原則，理由是「為了讓關係順一點」',
+    '連自己的核心原則也開始妥協，心裡有感覺但還是選擇讓',
+    '放棄了對自己重要的習慣/節奏/原則，甚至不覺得可惜',
+    '連身份認同也開始為他重塑，不確定哪些是「真正的自己」',
+    '幾乎沒有什麼是不能為他讓的，主動性消失，只剩下配合',
+    '「自己想要什麼」這個問題已經沒有意義，完全以他為座標',
+  ],
+  q3: [
+    '沒什麼感覺，繼續做自己的事，完全不在意',
+    '有注意到，但不會一直刷、等，情緒沒有明顯起伏',
+    '有點在意，偶爾刷一下確認，但不到焦慮的程度',
+    '看到已讀不回，心情就掉下來，有點難專注其他事',
+    '不回就開始焦慮，腦子開始猜原因、想太多，停不下來',
+    '超過一定時間不回，情緒就明顯失控，可能傳第二封催',
+    '一不回就反覆看手機，無法做其他任何事，陷入等待的迴圈',
+    '沒回就覺得有什麼不對，反覆傳訊確認，開始擔心關係出問題',
+    '不回就覺得世界快崩，情緒完全失控，可能哭或憤怒',
+    '完全無法承受，他的沉默等於拒絕，整個人陷入恐慌或崩潰',
+  ],
+  q4: [
+    '從不忽略，自己的感受始終在第一位，不覺得需要壓',
+    '偶爾讓步，事後有意識到，並且有跟自己對話',
+    '有時候先顧他的感受、再想自己，但清楚知道自己做了什麼選擇',
+    '常常先考慮他會怎麼想，才決定自己要什麼，順序已經倒過來',
+    '很多時候壓住自己感受去維持關係的平衡，壓完還要說服自己沒關係',
+    '自己感受幾乎成了次要，習慣性壓下去，有時候甚至不知道自己在壓',
+    '自己的感受？幾乎已經不在優先清單，他的情緒才是要管的事',
+    '已經習慣性犧牲自我感受，幾乎沒有察覺，反應都是自動的',
+    '「我感覺怎麼樣」這個問題很難回答，因為很久沒問過自己了',
+    '自己的感受已經消失，完全用他的狀態定義自己今天好不好',
+  ],
+  q5: [
+    '幾乎不提，提到也只是附帶一句，沒有展開',
+    '聊天時間的 1–2 成，是眾多話題之一',
+    '約 2–3 成，朋友偶爾會注意到你在說他',
+    '3–4 成，聊天容易繞回他，有時候自己都沒意識到',
+    '5 成，聊天時間一半都在說他，朋友已經很熟悉他的名字',
+    '超過 5 成，朋友開始主動說「你最近都在說他」',
+    '6–7 成，朋友見到你幾乎預設要聽關於他的事',
+    '7–8 成，跟他相關的事情成了你與朋友的社交主旋律',
+    '幾乎全部，朋友開始有些疲憊或擔心，但你沒有意識到',
+    '100%，朋友已經開始迴避這個話題，或你只剩和他相關的話可說',
+  ],
+  q6: [
+    '難過，但幾天內恢復，生活照常運作，沒有功能性損傷',
+    '很痛，但半個月內能站起來，核心日常基本維持',
+    '塌掉一部分，但核心生活功能還在，能繼續工作和與人相處',
+    '整個人垮掉，幾週難以恢復正常作息，需要朋友撐著',
+    '極難受，超過一個月狀態都不對，工作和社交都受到影響',
+    '幾乎崩潰，難以想像日常怎麼繼續，需要很長時間才能重建',
+    '完全垮掉，連基本生活都難以維持，幾乎需要外部介入',
+    '感覺那個人帶走了自己一部分，不知道自己是誰，認同感動搖',
+    '崩潰，覺得活著沒有意義，可能出現傷害自己的念頭',
+    '完全瓦解，無法獨立存在，他的消失等同於自我的消失',
+  ],
+};
 
 function gaugeBarHeight(score) {
   return Math.round(20 + (score - 1) * 42 / 9);
@@ -4590,19 +4674,28 @@ function DepthGaugePage({ theme, isMobile, relationship, onBack, onSave }) {
   return (
     <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '20px 16px 100px' : '32px 24px 80px' }}>
       <PageHeader title="暈船量表" onBack={onBack} theme={theme} />
-      <div style={{ fontSize: 13, color: theme.t3, marginBottom: 24, fontStyle: 'italic', fontFamily: font }}>
+      <div style={{ fontSize: 13, color: theme.t3, marginBottom: 4, fontStyle: 'italic', fontFamily: font }}>
         {relationship.codename} · {formatDate(todayStr())}
+      </div>
+      <div style={{ fontSize: 15, color: theme.t2, marginBottom: 28, fontStyle: 'italic', fontFamily: font, lineHeight: 1.6 }}>
+        這不是評分他。是看見自己。
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         {GAUGE_QUESTIONS.map(q => {
           const selected = scores[q.key];
+          const details = GAUGE_SCORE_DETAILS[q.key];
           return (
             <div key={q.key} style={{ ...cardStyle(theme) }}>
-              <div style={{ fontSize: 14, color: theme.t1, marginBottom: 14, fontFamily: font, lineHeight: 1.5 }}>
+              <div style={{ fontSize: 15, color: theme.t1, marginBottom: 4, fontFamily: font, fontWeight: 500, lineHeight: 1.5 }}>
                 {q.label}
               </div>
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: cellGap }}>
+              <div style={{ fontSize: 12, color: theme.t3, marginBottom: 16, fontFamily: font, fontStyle: 'italic' }}>
+                {q.hint}
+              </div>
+
+              {/* 柱狀圖（保留） */}
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: cellGap, marginBottom: 8 }}>
                 {Array.from({ length: 10 }, (_, i) => i + 1).map(score => {
                   const isSelected = selected === score;
                   const h = gaugeBarHeight(score);
@@ -4645,13 +4738,73 @@ function DepthGaugePage({ theme, isMobile, relationship, onBack, onSave }) {
                   );
                 })}
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, paddingTop: 4, borderTop: '0.5px solid ' + theme.border + '60' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, paddingBottom: 12, borderBottom: '0.5px solid ' + theme.border }}>
                 <span style={{ fontSize: 10, color: theme.t3, fontFamily: font }}>1 · {q.lo}</span>
                 <span style={{ fontSize: 10, color: theme.t3, fontFamily: font }}>5 · {q.mid}</span>
                 <span style={{ fontSize: 10, color: theme.coral + 'CC', fontFamily: font }}>10 · {q.hi}</span>
               </div>
+
+              {/* 全版面選項卡 */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {details.map((text, idx) => {
+                  const score = idx + 1;
+                  const isSelected = selected === score;
+                  const isWarn = score >= 7;
+                  return (
+                    <button
+                      key={score}
+                      onClick={() => setScores(prev => ({ ...prev, [q.key]: score }))}
+                      style={{
+                        width: '100%',
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: 10,
+                        padding: '10px 12px',
+                        borderRadius: 8,
+                        border: isSelected
+                          ? '1.5px solid ' + (isWarn ? theme.coral : theme.accent)
+                          : '0.5px solid ' + theme.border,
+                        background: isSelected
+                          ? (isWarn ? theme.coral + '12' : theme.accentLight)
+                          : theme.bgDeep,
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        transition: 'all 150ms ease-out',
+                      }}
+                    >
+                      <div style={{
+                        flexShrink: 0,
+                        width: 22,
+                        height: 22,
+                        borderRadius: '50%',
+                        background: isSelected ? (isWarn ? theme.coral : theme.accent) : 'transparent',
+                        border: '1px solid ' + (isSelected ? 'transparent' : (isWarn ? theme.coral + '60' : theme.border)),
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: isSelected ? '#fff' : (isWarn ? theme.coral : theme.t3),
+                        marginTop: 1,
+                      }}>
+                        {score}
+                      </div>
+                      <span style={{
+                        fontSize: 13,
+                        color: isSelected ? (isWarn ? theme.coral : theme.t1) : theme.t2,
+                        fontFamily: font,
+                        lineHeight: 1.6,
+                        fontWeight: isSelected ? 500 : 400,
+                      }}>
+                        {text}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
               {selected > 0 && (
-                <div style={{ marginTop: 4, fontSize: 12, color: selected >= 7 ? theme.coral : theme.t3, fontFamily: font }}>
+                <div style={{ marginTop: 10, fontSize: 12, color: selected >= 7 ? theme.coral : theme.t3, fontFamily: font }}>
                   已選 {selected} 分{selected >= 7 ? ' · 警戒範圍' : ''}
                 </div>
               )}
