@@ -683,7 +683,7 @@ function HomePage({ theme, isMobile, onNavigate, morningAnchors, sundayWitnesses
     <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '20px 16px 100px' : '32px 24px 80px' }}>
       {/* 其他入口（頂部） */}
       <div style={{ ...cardStyle(theme), marginBottom: 20, padding: '14px 16px' }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
           {[
             { label: '儀式菜單', page: PAGES.RITUAL },
             { label: '月度獨處', page: PAGES.DAILY, tab: 'monthly' },
