@@ -114,6 +114,15 @@ function daysDiff(dateStr1, dateStr2) {
   return Math.floor((d2 - d1) / 86400000);
 }
 
+function weekDateRange(weekStartDate) {
+  if (!weekStartDate) return '';
+  const start = new Date(weekStartDate + 'T00:00:00');
+  const end = new Date(weekStartDate + 'T00:00:00');
+  end.setDate(end.getDate() + 6);
+  const fmt = (d) => (d.getMonth() + 1) + '/' + d.getDate();
+  return fmt(start) + '－' + fmt(end);
+}
+
 function getDayOfWeek() {
   return new Date().getDay(); // 0=日
 }
@@ -921,12 +930,21 @@ function MorningAnchorRow({ entry, theme, isTouch, onSave, onDelete }) {
   if (editing) return (
     <div style={{ padding: '12px 14px', borderBottom: '0.5px solid ' + theme.border }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <AutoTextarea value={editState} onChange={e => setEditState(e.target.value)}
-          placeholder="今天的狀態…" style={{ ...inputStyle(theme), fontSize: 14 }} minRows={2} />
-        <AutoTextarea value={editProtect} onChange={e => setEditProtect(e.target.value)}
-          placeholder="想保護的…" style={{ ...inputStyle(theme), fontSize: 14 }} minRows={1} />
-        <AutoTextarea value={editAllow} onChange={e => setEditAllow(e.target.value)}
-          placeholder="允許的… （選填）" style={{ ...inputStyle(theme), fontSize: 14 }} minRows={1} />
+        <div>
+          <div style={{ fontSize: 11, color: theme.t3, marginBottom: 4 }}>今天的狀態</div>
+          <AutoTextarea value={editState} onChange={e => setEditState(e.target.value)}
+            placeholder="今天的狀態…" style={{ ...inputStyle(theme), fontSize: 14 }} minRows={2} />
+        </div>
+        <div>
+          <div style={{ fontSize: 11, color: theme.t3, marginBottom: 4 }}>我想保護什麼</div>
+          <AutoTextarea value={editProtect} onChange={e => setEditProtect(e.target.value)}
+            placeholder="想保護的…" style={{ ...inputStyle(theme), fontSize: 14 }} minRows={1} />
+        </div>
+        <div>
+          <div style={{ fontSize: 11, color: theme.t3, marginBottom: 4 }}>我允許什麼發生（選填）</div>
+          <AutoTextarea value={editAllow} onChange={e => setEditAllow(e.target.value)}
+            placeholder="允許的… （選填）" style={{ ...inputStyle(theme), fontSize: 14 }} minRows={1} />
+        </div>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button onClick={() => setEditing(false)} style={btnSecondary(theme)}>取消</button>
           <button onClick={handleSaveEdit} disabled={!editState.trim() && !editProtect.trim()}
@@ -1472,7 +1490,7 @@ function SundayWitnessTab({ theme, isMobile, sundayWitnesses, onSave }) {
         <div>
           <div style={{ fontSize: 13, color: theme.t3, marginBottom: 16 }}>—— 過往見證 ——</div>
           {visiblePastWitness.map((w, idx) => (
-            <TimelineItem key={w.id} date={w.weekNumber} theme={theme} badge={w.isLateEntry ? '補寫' : null}>
+            <TimelineItem key={w.id} date={w.weekStartDate ? weekDateRange(w.weekStartDate) : w.weekNumber} theme={theme} badge={w.isLateEntry ? '補寫' : null}>
               <WitnessExpandCard w={w} theme={theme} isCurrentWeek={false} defaultOpen={idx < 3} />
             </TimelineItem>
           ))}
@@ -1764,12 +1782,12 @@ function MonthlySoloTab({ theme, isMobile, monthlySolos, onSave, onDelete }) {
                     {qualityOptions.find(q => q.id === thisSolo.quality)?.label || thisSolo.quality}
                   </span>
                 )}
-                <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+                <div style={{ marginTop: 12, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                   <button onClick={() => { setMode('reflect'); setActual(thisSolo.actualDate || ''); setActualAct(thisSolo.actualActivity || ''); setReflection(thisSolo.reflection || ''); setQuality(thisSolo.quality || ''); }} style={{ ...btnSecondary(theme), fontSize: 13, padding: '6px 14px' }}>修改反思</button>
                 </div>
               </div>
             ) : (
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                 <button onClick={() => setMode('reflect')} style={btnSecondary(theme)}>事後反思</button>
                 <button onClick={() => { setMode('plan'); setPlanned(thisSolo.plannedDate || ''); setActivity(thisSolo.plannedActivity || ''); }} style={{ ...btnSecondary(theme), fontSize: 13, padding: '8px 14px' }}>修改計畫</button>
               </div>
@@ -1820,9 +1838,9 @@ function DailyPage({ theme, isMobile, initialTab, morningAnchors, sundayWitnesse
   ];
 
   const purposeMap = {
-    morning: '在一天的喧鬧開始之前，先回到自己這裡。不是為了計畫，而是為了看見此刻的你。',
-    witness: '每週給自己 30 分鐘，見證這一週真實活過的樣子。不評分，不比較，只是陪著自己好好看見。',
-    monthly: '一個人的時間是充電，不是逃跑。每個月給自己一天，讓自己重新找回自己的重心。',
+    morning: `在一天的喧鬧開始之前，先回到自己這裡。\n\n不是為了計畫，而是為了看見此刻的你——你現在是什麼狀態？你想保護什麼不被今天消耗掉？你願意允許什麼發生？\n\n心態：不評判，不期待。哪怕只有一句話，也算到了。`,
+    witness: `每週給自己 30 分鐘，見證這一週真實活過的樣子。\n\n不評分，不比較，不要問「這週夠好嗎？」——只是陪著自己好好看見：做得好的具體小事、這週看見的自己、值得感謝自己的地方、以及這週的情緒天氣。\n\n心態：你是自己的見證人，不是審判者。見證本身就是療癒。`,
+    monthly: `一個人的時間是充電，不是逃跑。\n\n每個月給自己一天（或半天），讓自己重新找回自己的重心。可以是獨自散步、看一本書、在咖啡廳發呆——任何讓你覺得「這是我的時間」的事都算。\n\n做什麼：事先規劃好，當天不做「應該做」的事，只做滋養自己的事。\n不做什麼：不刷社群、不回工作訊息、不討論別人的事。`,
   };
 
   return (
@@ -1849,7 +1867,7 @@ function DailyPage({ theme, isMobile, initialTab, morningAnchors, sundayWitnesse
       </div>
 
       {/* 目的引言 */}
-      <p style={{ margin: '0 0 24px', fontSize: 13, color: theme.t2, fontStyle: 'italic', lineHeight: 1.7, paddingLeft: 12, borderLeft: '2px solid ' + theme.accentLight }}>
+      <p style={{ margin: '0 0 24px', fontSize: 13, color: theme.t2, fontStyle: 'italic', lineHeight: 1.7, paddingLeft: 12, borderLeft: '2px solid ' + theme.accentLight, whiteSpace: 'pre-wrap' }}>
         {purposeMap[tab]}
       </p>
 
@@ -2103,12 +2121,6 @@ function RitualPage({ theme, isMobile, ritualEntries, onSave, onDelete, onEdit }
   const isTouch = useRef(typeof window !== 'undefined' && window.matchMedia('(pointer:coarse)').matches).current;
   const sorted = [...ritualEntries].sort((a, b) => b.createdAt - a.createdAt);
 
-  const getRitualTitle = (entry) => {
-    if (entry.ritualType === 'custom') return entry.customTitle || '自訂儀式';
-    return RITUAL_TYPES.find(r => r.id === entry.ritualType)?.title || entry.ritualType;
-  };
-
-  // grouped by ritualType — 只顯示有紀錄的類型
   const groupOrder = ['thursday-jupiter', 'friday-venus', 'morning-body', 'daily-gratitude', 'custom'];
   const groups = groupOrder.map(typeId => ({
     typeId,
@@ -2116,9 +2128,48 @@ function RitualPage({ theme, isMobile, ritualEntries, onSave, onDelete, onEdit }
     entries: sorted.filter(e => e.ritualType === typeId),
   })).filter(g => g.entries.length > 0);
 
+  // 歷史篩選狀態
+  const [historyMode, setHistoryMode] = useState('category'); // 'time' | 'category'
+  const [filterTypes, setFilterTypes] = useState([]); // 多選，用於 time 模式
+  const [filterYM, setFilterYM] = useState('');
+  const [filterSingleType, setFilterSingleType] = useState('');
+  const [timeFilterMode, setTimeFilterMode] = useState('all');
+  const [filterYear, setFilterYear] = useState('');
+  const [filterMonthYM, setFilterMonthYM] = useState('');
+  const [filterStart, setFilterStart] = useState('');
+  const [filterEnd, setFilterEnd] = useState('');
+  const [showCount, setShowCount] = useState(20);
+
+  const font = "'Noto Serif TC', serif";
+  const chipStyle = (active) => ({
+    padding: '5px 12px', borderRadius: 20, cursor: 'pointer', fontSize: 12,
+    background: active ? theme.accentLight : 'transparent',
+    border: active ? '1.5px solid ' + theme.accent : '0.5px solid ' + theme.border,
+    color: active ? theme.accent : theme.t3,
+    transition: 'all 150ms', fontFamily: font,
+  });
+
+  const years = [...new Set(sorted.map(e => (e.date || '').slice(0, 4)).filter(Boolean))].sort().reverse();
+
+  const timeFiltered = sorted
+    .filter(e => filterTypes.length === 0 || filterTypes.includes(e.ritualType))
+    .filter(e => !filterYM || (e.date || '').startsWith(filterYM));
+
+  const catFiltered = sorted
+    .filter(e => !filterSingleType || e.ritualType === filterSingleType)
+    .filter(e => {
+      if (timeFilterMode === 'month' && filterMonthYM) return (e.date || '').startsWith(filterMonthYM);
+      if (timeFilterMode === 'year' && filterYear) return (e.date || '').startsWith(filterYear);
+      if (timeFilterMode === 'custom') {
+        if (filterStart && (e.date || '') < filterStart) return false;
+        if (filterEnd && (e.date || '') > filterEnd) return false;
+      }
+      return true;
+    });
+
   return (
     <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '20px 16px 100px' : '32px 24px 80px' }}>
-      <h2 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 500, color: theme.t1, fontFamily: "'Noto Serif TC', serif" }}>
+      <h2 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 500, color: theme.t1, fontFamily: font }}>
         儀式菜單
       </h2>
       <p style={{ margin: '0 0 8px', fontSize: 13, color: theme.t3, fontStyle: 'italic' }}>
@@ -2134,11 +2185,115 @@ function RitualPage({ theme, isMobile, ritualEntries, onSave, onDelete, onEdit }
 
       {sorted.length > 0 && (
         <div style={{ marginTop: 32 }}>
-          <div style={{ fontSize: 13, color: theme.t3, marginBottom: 20 }}>—— 過往儀式紀錄 ——</div>
-          {groups.map(group => (
-            <RitualGroup key={group.typeId} group={group} theme={theme} isTouch={isTouch}
-              onEdit={onEdit} onDelete={onDelete} />
-          ))}
+          <div style={{ fontSize: 13, color: theme.t3, marginBottom: 16 }}>—— 過往儀式紀錄 ——</div>
+
+          {/* 模式切換 */}
+          <div style={{ display: 'flex', marginBottom: 16, borderBottom: '1px solid ' + theme.border }}>
+            {[{ id: 'category', label: '按類別' }, { id: 'time', label: '按時間' }].map(m => (
+              <button key={m.id} onClick={() => { setHistoryMode(m.id); setShowCount(20); }} style={{
+                flex: 1, background: 'transparent', border: 'none',
+                borderBottom: historyMode === m.id ? '2px solid ' + theme.accent : '2px solid transparent',
+                padding: '10px 8px', fontSize: 13, cursor: 'pointer', marginBottom: -1,
+                color: historyMode === m.id ? theme.accent : theme.t3, fontFamily: font,
+                fontWeight: historyMode === m.id ? 500 : 400,
+              }}>{m.label}</button>
+            ))}
+          </div>
+
+          {historyMode === 'category' ? (
+            <>
+              {/* 單選類別 */}
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+                <button onClick={() => { setFilterSingleType(''); setShowCount(20); }} style={chipStyle(!filterSingleType)}>全部</button>
+                {groups.map(g => (
+                  <button key={g.typeId} onClick={() => { setFilterSingleType(filterSingleType === g.typeId ? '' : g.typeId); setShowCount(20); }}
+                    style={chipStyle(filterSingleType === g.typeId)}>{g.label}</button>
+                ))}
+              </div>
+              {/* 時間篩選 */}
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12, alignItems: 'center' }}>
+                <span style={{ fontSize: 12, color: theme.t3 }}>時間：</span>
+                {['all', 'month', 'year', 'custom'].map(m => (
+                  <button key={m} onClick={() => { setTimeFilterMode(m); setShowCount(20); }} style={chipStyle(timeFilterMode === m)}>
+                    {{ all: '全部', month: '月份', year: '年份', custom: '自訂' }[m]}
+                  </button>
+                ))}
+              </div>
+              {timeFilterMode === 'month' && (
+                <MonthCalendarPicker entries={catFiltered} selectedYM={filterMonthYM}
+                  onSelect={ym => { setFilterMonthYM(ym); setShowCount(20); }}
+                  theme={theme} label="全部" count={catFiltered.length} />
+              )}
+              {timeFilterMode === 'year' && (
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+                  {years.map(y => (
+                    <button key={y} onClick={() => { setFilterYear(filterYear === y ? '' : y); setShowCount(20); }}
+                      style={chipStyle(filterYear === y)}>{y} 年</button>
+                  ))}
+                </div>
+              )}
+              {timeFilterMode === 'custom' && (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12, alignItems: 'center' }}>
+                  <input type="date" value={filterStart} onChange={e => { setFilterStart(e.target.value); setShowCount(20); }}
+                    style={{ ...inputStyle(theme), fontSize: 13, padding: '6px 10px', flex: 1, minWidth: 120 }} />
+                  <span style={{ fontSize: 12, color: theme.t3 }}>至</span>
+                  <input type="date" value={filterEnd} onChange={e => { setFilterEnd(e.target.value); setShowCount(20); }}
+                    style={{ ...inputStyle(theme), fontSize: 13, padding: '6px 10px', flex: 1, minWidth: 120 }} />
+                </div>
+              )}
+              {catFiltered.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '24px 0', color: theme.t3, fontSize: 13, fontStyle: 'italic' }}>
+                  這個範圍沒有紀錄。
+                </div>
+              ) : (
+                <div style={{ background: theme.bgCard, border: '0.5px solid ' + theme.border, borderRadius: 12, overflow: 'hidden' }}>
+                  {catFiltered.slice(0, showCount).map(entry => (
+                    <RitualEntryRow key={entry.id} entry={entry} theme={theme} isTouch={isTouch} onEdit={onEdit} onDelete={onDelete} />
+                  ))}
+                  {catFiltered.length > showCount && (
+                    <div style={{ padding: '12px 14px', textAlign: 'center' }}>
+                      <button onClick={() => setShowCount(c => c + 20)} style={{ ...chipStyle(false), border: 'none' }}>
+                        載入更多（還有 {catFiltered.length - showCount} 筆）
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              {/* 按時間：月曆 picker + 多選類別 */}
+              <MonthCalendarPicker entries={sorted} selectedYM={filterYM}
+                onSelect={ym => { setFilterYM(ym); setShowCount(20); }}
+                theme={theme} label="全部" count={timeFiltered.length} />
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12, alignItems: 'center' }}>
+                <span style={{ fontSize: 12, color: theme.t3 }}>類別：</span>
+                {groups.map(g => (
+                  <button key={g.typeId} onClick={() => { setFilterTypes(prev => prev.includes(g.typeId) ? prev.filter(x => x !== g.typeId) : [...prev, g.typeId]); setShowCount(20); }}
+                    style={chipStyle(filterTypes.includes(g.typeId))}>{g.label}</button>
+                ))}
+                {filterTypes.length > 0 && <button onClick={() => setFilterTypes([])} style={{ ...chipStyle(false), border: 'none' }}>清除</button>}
+              </div>
+              {timeFiltered.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '24px 0', color: theme.t3, fontSize: 13, fontStyle: 'italic' }}>
+                  這個範圍沒有紀錄。
+                </div>
+              ) : (
+                <div style={{ background: theme.bgCard, border: '0.5px solid ' + theme.border, borderRadius: 12, overflow: 'hidden' }}>
+                  {timeFiltered.slice(0, showCount).map(entry => (
+                    <RitualEntryRow key={entry.id} entry={entry} theme={theme} isTouch={isTouch} onEdit={onEdit} onDelete={onDelete} />
+                  ))}
+                  {timeFiltered.length > showCount && (
+                    <div style={{ padding: '12px 14px', textAlign: 'center' }}>
+                      <button onClick={() => setShowCount(c => c + 20)} style={{ ...chipStyle(false), border: 'none' }}>
+                        載入更多（還有 {timeFiltered.length - showCount} 筆）
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
     </div>
@@ -2149,15 +2304,20 @@ function RitualPage({ theme, isMobile, ritualEntries, onSave, onDelete, onEdit }
 // 小勇敢紀錄頁
 // ============================================================================
 
-const COURAGE_CATEGORIES = [
-  { id: 'solo', label: '獨自行動' },
-  { id: 'social', label: '社交互動' },
-  { id: 'voice', label: '說出來' },
-  { id: 'expression', label: '表達自己' },
-  { id: 'other', label: '其他' },
+const DEFAULT_COURAGE_CATEGORIES = [
+  { id: 'solo', label: '獨自行動', archived: false },
+  { id: 'social', label: '社交互動', archived: false },
+  { id: 'voice', label: '說出來', archived: false },
+  { id: 'expression', label: '表達自己', archived: false },
+  { id: 'other', label: '其他', archived: false },
 ];
 
-function CourageItem({ entry, theme, onDelete, onEdit, isTouch }) {
+function getCategoryIcon(cat) {
+  const map = { solo: 'leaf', social: 'heart', voice: 'feather', expression: 'star', other: 'sun' };
+  return map[cat] || 'sun';
+}
+
+function CourageItem({ entry, theme, onDelete, onEdit, isTouch, categories }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editAction, setEditAction] = useState(entry.action);
@@ -2166,15 +2326,13 @@ function CourageItem({ entry, theme, onDelete, onEdit, isTouch }) {
   const [hov, setHov] = useState(false);
   const showActions = isTouch || hov;
 
+  const allCats = categories || DEFAULT_COURAGE_CATEGORIES;
+  const catLabel = allCats.find(c => c.id === entry.category)?.label || entry.category;
+
   const handleSaveEdit = () => {
     if (!editAction.trim()) return;
     onEdit({ ...entry, action: editAction.trim(), feeling: editFeeling.trim(), category: editCategory });
     setEditing(false);
-  };
-
-  const categoryIcon = (cat) => {
-    const map = { solo: 'leaf', social: 'heart', voice: 'feather', expression: 'star', other: 'sun' };
-    return map[cat] || 'sun';
   };
 
   if (editing) return (
@@ -2185,14 +2343,14 @@ function CourageItem({ entry, theme, onDelete, onEdit, isTouch }) {
         <AutoTextarea value={editFeeling} onChange={e => setEditFeeling(e.target.value)}
           placeholder="感覺如何…（選填）" style={inputStyle(theme)} minRows={1} />
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {COURAGE_CATEGORIES.map(c => (
+          {allCats.filter(c => !c.archived || c.id === entry.category).map(c => (
             <button key={c.id} onClick={() => setEditCategory(c.id)} style={{
               padding: '5px 12px', borderRadius: 20, cursor: 'pointer', fontSize: 12,
               background: editCategory === c.id ? theme.accentLight : theme.bgDeep,
               border: editCategory === c.id ? '1.5px solid ' + theme.accent : '0.5px solid ' + theme.border,
               color: editCategory === c.id ? theme.accent : theme.t2,
               fontFamily: "'Noto Serif TC', serif",
-            }}>{c.label}</button>
+            }}>{c.label}{c.archived ? ' (封存)' : ''}</button>
           ))}
         </div>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
@@ -2210,10 +2368,8 @@ function CourageItem({ entry, theme, onDelete, onEdit, isTouch }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <Icon name={categoryIcon(entry.category)} size={14} color={theme.accent} />
-            <span style={{ fontSize: 12, color: theme.accent }}>
-              {COURAGE_CATEGORIES.find(c => c.id === entry.category)?.label || entry.category}
-            </span>
+            <Icon name={getCategoryIcon(entry.category)} size={14} color={theme.accent} />
+            <span style={{ fontSize: 12, color: theme.accent }}>{catLabel}</span>
           </div>
           <div style={{ fontSize: 14, color: theme.t1, lineHeight: 1.6, marginBottom: entry.feeling ? 8 : 0 }}>
             {entry.action}
@@ -2222,7 +2378,6 @@ function CourageItem({ entry, theme, onDelete, onEdit, isTouch }) {
             <div style={{ fontSize: 13, color: theme.t2, lineHeight: 1.5, fontStyle: 'italic' }}>{entry.feeling}</div>
           )}
         </div>
-        {/* 右側操作按鈕 */}
         {showActions && !confirmDelete && (
           <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
             <button onClick={() => setEditing(true)} style={{
@@ -2249,44 +2404,173 @@ function CourageItem({ entry, theme, onDelete, onEdit, isTouch }) {
   );
 }
 
-function CouragePage({ theme, isMobile, smallCourages, onSave, onDelete, onEdit }) {
+function CouragePage({ theme, isMobile, smallCourages, onSave, onDelete, onEdit, courageCategories, onUpdateCategories, onDeleteCategoryWithRecords }) {
   const isTouch = useRef(typeof window !== 'undefined' && window.matchMedia('(pointer:coarse)').matches).current;
+  const cats = courageCategories || DEFAULT_COURAGE_CATEGORIES;
+  const activeCats = cats.filter(c => !c.archived);
+
   const [adding, setAdding] = useState(false);
   const [action, setAction] = useState('');
   const [feeling, setFeeling] = useState('');
-  const [category, setCategory] = useState('solo');
+  const [category, setCategory] = useState(() => activeCats[0]?.id || 'other');
+
+  // 分類管理
+  const [managingCats, setManagingCats] = useState(false);
+  const [newCatLabel, setNewCatLabel] = useState('');
+  const [deleteCatConfirm, setDeleteCatConfirm] = useState(null); // catId to confirm delete
+
+  // 篩選模式
+  const [filterMode, setFilterMode] = useState('time'); // 'time' | 'category'
+  // time 模式
+  const [filterCats, setFilterCats] = useState([]);
+  const [filterYM, setFilterYM] = useState('');
+  // category 模式
+  const [filterSingleCat, setFilterSingleCat] = useState('');
+  const [timeFilterMode, setTimeFilterMode] = useState('all'); // 'all' | 'month' | 'year' | 'custom'
+  const [filterYear, setFilterYear] = useState('');
+  const [filterMonthYM, setFilterMonthYM] = useState('');
+  const [filterStart, setFilterStart] = useState('');
+  const [filterEnd, setFilterEnd] = useState('');
+  const [showCount, setShowCount] = useState(10);
+
+  const sorted = [...smallCourages].sort((a, b) => b.createdAt - a.createdAt);
+
+  const filtered = sorted.filter(e => {
+    if (filterMode === 'time') {
+      if (filterCats.length > 0 && !filterCats.includes(e.category)) return false;
+      if (filterYM && !(e.date || '').startsWith(filterYM)) return false;
+    } else {
+      if (filterSingleCat && e.category !== filterSingleCat) return false;
+      if (timeFilterMode === 'month' && filterMonthYM && !(e.date || '').startsWith(filterMonthYM)) return false;
+      if (timeFilterMode === 'year' && filterYear && !(e.date || '').startsWith(filterYear)) return false;
+      if (timeFilterMode === 'custom') {
+        if (filterStart && (e.date || '') < filterStart) return false;
+        if (filterEnd && (e.date || '') > filterEnd) return false;
+      }
+    }
+    return true;
+  });
 
   const handleSave = () => {
     if (!action.trim()) return;
     onSave({ id: genId(), date: todayStr(), action: action.trim(), feeling: feeling.trim(), category, createdAt: Date.now() });
     setAdding(false);
-    setAction(''); setFeeling(''); setCategory('solo');
+    setAction(''); setFeeling(''); setCategory(activeCats[0]?.id || 'other');
   };
 
-  const sorted = [...smallCourages].sort((a, b) => b.createdAt - a.createdAt);
-  const [courageShowCount, setCourageShowCount] = useState(10);
-  const [filterCats, setFilterCats] = useState([]); // 空陣列=全部
-  const [filterYM, setFilterYM] = useState(''); // 年月篩選，空=全部
-
-  const toggleFilter = (id) => {
-    setFilterCats(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-    setCourageShowCount(10);
+  const handleAddCategory = () => {
+    const label = newCatLabel.trim();
+    if (!label) return;
+    const id = 'custom-' + genId().slice(0, 8);
+    onUpdateCategories(prev => [...prev, { id, label, archived: false }]);
+    setNewCatLabel('');
   };
 
-  const filtered = sorted
-    .filter(e => filterCats.length === 0 || filterCats.includes(e.category))
-    .filter(e => !filterYM || (e.date || '').startsWith(filterYM));
-  const visibleCourages = filtered.slice(0, courageShowCount);
+  const handleArchiveCategory = (catId) => {
+    onUpdateCategories(prev => prev.map(c => c.id === catId ? { ...c, archived: true } : c));
+  };
+
+  const handleUnarchiveCategory = (catId) => {
+    onUpdateCategories(prev => prev.map(c => c.id === catId ? { ...c, archived: false } : c));
+  };
+
+  const handleDeleteCategory = (catId) => {
+    const hasRecords = smallCourages.some(e => e.category === catId);
+    if (hasRecords) {
+      setDeleteCatConfirm(catId);
+    } else {
+      onUpdateCategories(prev => prev.filter(c => c.id !== catId));
+    }
+  };
+
+  const years = [...new Set(sorted.map(e => (e.date || '').slice(0, 4)).filter(Boolean))].sort().reverse();
+
+  const font = "'Noto Serif TC', serif";
+  const chipStyle = (active) => ({
+    padding: '5px 14px', borderRadius: 20, cursor: 'pointer', fontSize: 12,
+    background: active ? theme.accentLight : 'transparent',
+    border: active ? '1.5px solid ' + theme.accent : '0.5px solid ' + theme.border,
+    color: active ? theme.accent : theme.t3,
+    transition: 'all 150ms', fontFamily: font,
+  });
 
   return (
     <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '20px 16px 100px' : '32px 24px 80px' }}>
-      <h2 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 500, color: theme.t1, fontFamily: "'Noto Serif TC', serif" }}>
-        小勇敢紀錄
-      </h2>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 500, color: theme.t1, fontFamily: font }}>小勇敢紀錄</h2>
+        <button onClick={() => setManagingCats(v => !v)} style={{ ...btnSecondary(theme), fontSize: 12, padding: '5px 12px' }}>
+          管理分類
+        </button>
+      </div>
       <p style={{ margin: '0 0 20px', fontSize: 13, color: theme.t2, fontStyle: 'italic', lineHeight: 1.7, paddingLeft: 12, borderLeft: '2px solid ' + theme.accentLight }}>
         練習拓展自己的舒適圈邊界，累積之後看見自己真的在長大。不是要你每天都勇敢，而是讓你知道：你做到過。
       </p>
 
+      {/* 分類管理 */}
+      {managingCats && (
+        <div style={{ ...cardStyle(theme), marginBottom: 24 }}>
+          <div style={{ fontSize: 14, fontWeight: 500, color: theme.t1, marginBottom: 16, fontFamily: font }}>管理分類</div>
+          {cats.map(c => (
+            <div key={c.id} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '8px 0', borderBottom: '0.5px solid ' + theme.border,
+            }}>
+              <span style={{ fontSize: 14, color: c.archived ? theme.t3 : theme.t1, fontStyle: c.archived ? 'italic' : 'normal' }}>
+                {c.label}{c.archived ? ' （封存）' : ''}
+              </span>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {c.archived ? (
+                  <button onClick={() => handleUnarchiveCategory(c.id)} style={{ ...btnSecondary(theme), fontSize: 11, padding: '4px 10px' }}>解除封存</button>
+                ) : (
+                  <button onClick={() => handleArchiveCategory(c.id)} style={{ ...btnSecondary(theme), fontSize: 11, padding: '4px 10px' }}>封存</button>
+                )}
+                <button onClick={() => handleDeleteCategory(c.id)} style={{
+                  background: 'transparent', border: 'none', color: theme.coral, cursor: 'pointer',
+                  padding: '4px 6px', fontSize: 11, fontFamily: font,
+                }}>刪除</button>
+              </div>
+            </div>
+          ))}
+          <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+            <input
+              type="text"
+              value={newCatLabel}
+              onChange={e => setNewCatLabel(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAddCategory()}
+              placeholder="新分類名稱…"
+              style={{ ...inputStyle(theme), flex: 1, fontSize: 14 }}
+            />
+            <button onClick={handleAddCategory} disabled={!newCatLabel.trim()} style={btnPrimary(theme, !newCatLabel.trim())}>新增</button>
+          </div>
+        </div>
+      )}
+
+      {/* 刪除分類確認 */}
+      {deleteCatConfirm && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
+          display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center',
+          zIndex: 1000, padding: isMobile ? 0 : 16,
+        }} onClick={() => setDeleteCatConfirm(null)}>
+          <div style={{
+            background: theme.bgCard, borderRadius: isMobile ? '12px 12px 0 0' : 12,
+            border: '0.5px solid ' + theme.border, width: '100%', maxWidth: isMobile ? '100%' : 440, padding: 24,
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 15, fontWeight: 500, color: theme.coral, marginBottom: 12, fontFamily: font }}>刪除分類</div>
+            <p style={{ fontSize: 14, color: theme.t2, lineHeight: 1.7, margin: '0 0 20px' }}>
+              「{cats.find(c => c.id === deleteCatConfirm)?.label}」有使用記錄。<br />
+              刪除此分類，同時也會刪除該分類下所有的小勇敢記錄，且無法復原。
+            </p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => setDeleteCatConfirm(null)} style={btnSecondary(theme)}>取消</button>
+              <button onClick={() => { onDeleteCategoryWithRecords(deleteCatConfirm); setDeleteCatConfirm(null); }}
+                style={{ ...btnPrimary(theme), background: theme.coral }}>確認刪除</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 新增表單 */}
       {!adding ? (
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <button onClick={() => setAdding(true)} style={{ ...btnPrimary(theme), fontSize: 15, padding: '12px 32px' }}>
@@ -2295,9 +2579,7 @@ function CouragePage({ theme, isMobile, smallCourages, onSave, onDelete, onEdit 
         </div>
       ) : (
         <div style={{ ...cardStyle(theme), marginBottom: 32 }}>
-          <h3 style={{ margin: '0 0 20px', fontSize: 16, fontWeight: 500, color: theme.t1, fontFamily: "'Noto Serif TC', serif" }}>
-            今天的小勇敢
-          </h3>
+          <h3 style={{ margin: '0 0 20px', fontSize: 16, fontWeight: 500, color: theme.t1, fontFamily: font }}>今天的小勇敢</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div>
               <label style={{ fontSize: 13, color: theme.t2, marginBottom: 6, display: 'block' }}>做了什麼</label>
@@ -2312,19 +2594,18 @@ function CouragePage({ theme, isMobile, smallCourages, onSave, onDelete, onEdit 
             <div>
               <label style={{ fontSize: 13, color: theme.t2, marginBottom: 10, display: 'block' }}>分類</label>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {COURAGE_CATEGORIES.map(c => (
+                {activeCats.map(c => (
                   <button key={c.id} onClick={() => setCategory(c.id)} style={{
                     padding: '7px 14px', borderRadius: 20, cursor: 'pointer', fontSize: 13,
                     background: category === c.id ? theme.accentLight : theme.bgDeep,
                     border: category === c.id ? '1.5px solid ' + theme.accent : '0.5px solid ' + theme.border,
-                    color: category === c.id ? theme.accent : theme.t2, transition: 'all 150ms',
-                    fontFamily: "'Noto Serif TC', serif",
+                    color: category === c.id ? theme.accent : theme.t2, transition: 'all 150ms', fontFamily: font,
                   }}>{c.label}</button>
                 ))}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button onClick={() => { setAdding(false); setAction(''); setFeeling(''); setCategory('solo'); }} style={btnSecondary(theme)}>取消</button>
+              <button onClick={() => { setAdding(false); setAction(''); setFeeling(''); }} style={btnSecondary(theme)}>取消</button>
               <button onClick={handleSave} disabled={!action.trim()} style={btnPrimary(theme, !action.trim())}>儲存</button>
             </div>
           </div>
@@ -2337,56 +2618,97 @@ function CouragePage({ theme, isMobile, smallCourages, onSave, onDelete, onEdit 
         </div>
       ) : (
         <div>
-          {/* 分類篩選 */}
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12, alignItems: 'center' }}>
-            <span style={{ fontSize: 12, color: theme.t3 }}>分類：</span>
-            {COURAGE_CATEGORIES.map(c => {
-              const active = filterCats.includes(c.id);
-              return (
-                <button key={c.id} onClick={() => toggleFilter(c.id)} style={{
-                  padding: '5px 14px', borderRadius: 20, cursor: 'pointer', fontSize: 12,
-                  background: active ? theme.accentLight : 'transparent',
-                  border: active ? '1.5px solid ' + theme.accent : '0.5px solid ' + theme.border,
-                  color: active ? theme.accent : theme.t3,
-                  transition: 'all 150ms', fontFamily: "'Noto Serif TC', serif",
-                }}>{c.label}</button>
-              );
-            })}
-            {filterCats.length > 0 && (
-              <button onClick={() => setFilterCats([])} style={{
-                padding: '5px 10px', borderRadius: 20, cursor: 'pointer', fontSize: 11,
-                background: 'transparent', border: 'none', color: theme.t3,
-                fontFamily: "'Noto Serif TC', serif",
-              }}>清除</button>
-            )}
+          {/* 篩選模式切換 */}
+          <div style={{ display: 'flex', marginBottom: 16, borderBottom: '1px solid ' + theme.border }}>
+            {[{ id: 'time', label: '按時間' }, { id: 'category', label: '按類別' }].map(m => (
+              <button key={m.id} onClick={() => { setFilterMode(m.id); setShowCount(10); }} style={{
+                flex: 1, background: 'transparent', border: 'none',
+                borderBottom: filterMode === m.id ? '2px solid ' + theme.accent : '2px solid transparent',
+                padding: '10px 8px', fontSize: 13, cursor: 'pointer', marginBottom: -1,
+                color: filterMode === m.id ? theme.accent : theme.t3, fontFamily: font,
+                fontWeight: filterMode === m.id ? 500 : 400,
+              }}>{m.label}</button>
+            ))}
           </div>
-          {/* 年月 Picker */}
-          {sorted.length > 0 && (
-            <MonthCalendarPicker
-              entries={sorted}
-              selectedYM={filterYM}
-              onSelect={(ym) => { setFilterYM(ym); setCourageShowCount(10); }}
-              theme={theme}
-              label="全部紀錄"
-              count={filtered.length}
-            />
+
+          {filterMode === 'time' ? (
+            <>
+              <MonthCalendarPicker entries={sorted} selectedYM={filterYM}
+                onSelect={ym => { setFilterYM(ym); setShowCount(10); }}
+                theme={theme} label="全部" count={sorted.filter(e => !filterCats.length || filterCats.includes(e.category)).length} />
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12, alignItems: 'center' }}>
+                <span style={{ fontSize: 12, color: theme.t3 }}>類別：</span>
+                {cats.map(c => (
+                  <button key={c.id} onClick={() => { setFilterCats(prev => prev.includes(c.id) ? prev.filter(x => x !== c.id) : [...prev, c.id]); setShowCount(10); }}
+                    style={chipStyle(filterCats.includes(c.id))}>
+                    {c.label}{c.archived ? ' ·封' : ''}
+                  </button>
+                ))}
+                {filterCats.length > 0 && <button onClick={() => setFilterCats([])} style={{ ...chipStyle(false), border: 'none' }}>清除</button>}
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12, alignItems: 'center' }}>
+                <span style={{ fontSize: 12, color: theme.t3 }}>類別：</span>
+                {cats.map(c => (
+                  <button key={c.id} onClick={() => { setFilterSingleCat(filterSingleCat === c.id ? '' : c.id); setShowCount(10); }}
+                    style={chipStyle(filterSingleCat === c.id)}>
+                    {c.label}{c.archived ? ' ·封' : ''}
+                  </button>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12, alignItems: 'center' }}>
+                <span style={{ fontSize: 12, color: theme.t3 }}>時間：</span>
+                {['all', 'month', 'year', 'custom'].map(m => (
+                  <button key={m} onClick={() => { setTimeFilterMode(m); setShowCount(10); }}
+                    style={chipStyle(timeFilterMode === m)}>
+                    {{ all: '全部', month: '月份', year: '年份', custom: '自訂' }[m]}
+                  </button>
+                ))}
+              </div>
+              {timeFilterMode === 'month' && (
+                <MonthCalendarPicker entries={sorted.filter(e => !filterSingleCat || e.category === filterSingleCat)}
+                  selectedYM={filterMonthYM}
+                  onSelect={ym => { setFilterMonthYM(ym); setShowCount(10); }}
+                  theme={theme} label="全部" count={filtered.length} />
+              )}
+              {timeFilterMode === 'year' && (
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+                  {years.map(y => (
+                    <button key={y} onClick={() => { setFilterYear(filterYear === y ? '' : y); setShowCount(10); }}
+                      style={chipStyle(filterYear === y)}>{y} 年</button>
+                  ))}
+                </div>
+              )}
+              {timeFilterMode === 'custom' && (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12, alignItems: 'center' }}>
+                  <input type="date" value={filterStart} onChange={e => { setFilterStart(e.target.value); setShowCount(10); }}
+                    style={{ ...inputStyle(theme), fontSize: 13, padding: '6px 10px', flex: 1, minWidth: 120 }} />
+                  <span style={{ fontSize: 12, color: theme.t3 }}>至</span>
+                  <input type="date" value={filterEnd} onChange={e => { setFilterEnd(e.target.value); setShowCount(10); }}
+                    style={{ ...inputStyle(theme), fontSize: 13, padding: '6px 10px', flex: 1, minWidth: 120 }} />
+                </div>
+              )}
+            </>
           )}
+
           {filtered.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '24px 0', color: theme.t3, fontSize: 13, fontStyle: 'italic' }}>
-              這個分類還沒有紀錄。
+              這個範圍沒有記錄。
             </div>
           ) : (
             <>
-              {visibleCourages.map(entry => (
+              {filtered.slice(0, showCount).map(entry => (
                 <TimelineItem key={entry.id} date={formatDate(entry.date)} theme={theme}>
                   <CourageItem entry={entry} theme={theme} isTouch={isTouch}
-                    onDelete={onDelete} onEdit={onEdit} />
+                    onDelete={onDelete} onEdit={onEdit} categories={cats} />
                 </TimelineItem>
               ))}
-              {filtered.length > courageShowCount && (
+              {filtered.length > showCount && (
                 <div style={{ textAlign: 'center', paddingTop: 8 }}>
-                  <button onClick={() => setCourageShowCount(c => c + 10)} style={{ ...btnSecondary(theme), fontSize: 13, padding: '8px 20px' }}>
-                    載入更多（還有 {filtered.length - courageShowCount} 筆）
+                  <button onClick={() => setShowCount(c => c + 10)} style={{ ...btnSecondary(theme), fontSize: 13, padding: '8px 20px' }}>
+                    載入更多（還有 {filtered.length - showCount} 筆）
                   </button>
                 </div>
               )}
@@ -3612,12 +3934,16 @@ function RelationshipListPage({ theme, isMobile, relationships, onCreateRelation
 
   return (
     <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '20px 16px 100px' : '32px 24px 80px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <h2 style={{ margin: 0, fontSize: 20, fontWeight: 500, color: theme.t1, fontFamily: font }}>關係管理</h2>
         {!showForm && (
           <button onClick={() => setShowForm(true)} style={btnPrimary(theme)}>開始追蹤</button>
         )}
       </div>
+      <p style={{ margin: '0 0 24px', fontSize: 13, color: theme.t2, fontStyle: 'italic', lineHeight: 1.7, paddingLeft: 12, borderLeft: '2px solid ' + theme.accentLight }}>
+        用代號追蹤一段正在發展中的關係——不是用真名，不是為了分析對方，而是為了看清楚自己在其中的狀態。<br />
+        每週填寫暈船量表，觀察自己的重心有沒有偏移，在關係裡還保有多少自己。
+      </p>
 
       {showForm && (
         <div style={{ ...cardStyle(theme), marginBottom: 20 }}>
@@ -3752,9 +4078,11 @@ function RelationshipNotes({ theme, relationship, onUpdate }) {
 // 關係管理 — 單一關係頁
 // ============================================================================
 
-function RelationshipDetailPage({ theme, isMobile, relationship, depthGauges, onBack, onNavigateToGauge, onUpdateRelationship, showToast }) {
-  const [stageModal, setStageModal] = useState(null); // null | 'developing' | 'pause' | 'resume' | 'end'
+function RelationshipDetailPage({ theme, isMobile, relationship, depthGauges, onBack, onNavigateToGauge, onUpdateRelationship, onDeleteRelationship, showToast }) {
+  const [stageModal, setStageModal] = useState(null); // null | 'developing' | 'pause' | 'resume' | 'end' | 'delete'
   const [endingText, setEndingText] = useState('');
+  const [editingCodename, setEditingCodename] = useState(false);
+  const [codenameInput, setCodenameInput] = useState(relationship?.codename || '');
 
   if (!relationship) return null;
   const font = "'Noto Serif TC', serif";
@@ -3785,7 +4113,18 @@ function RelationshipDetailPage({ theme, isMobile, relationship, depthGauges, on
       onUpdateRelationship({ ...relationship, currentStage: 'ended', endDate: todayStr(), endingReflection: endingText });
       setStageModal(null);
       onBack();
+    } else if (stageModal === 'delete') {
+      if (onDeleteRelationship) onDeleteRelationship(relationship.id);
+      setStageModal(null);
+      onBack();
     }
+  };
+
+  const handleSaveCodename = () => {
+    if (!codenameInput.trim()) return;
+    onUpdateRelationship({ ...relationship, codename: codenameInput.trim() });
+    setEditingCodename(false);
+    if (showToast) showToast('neutral', '代號已更新。');
   };
 
   return (
@@ -3812,7 +4151,39 @@ function RelationshipDetailPage({ theme, isMobile, relationship, depthGauges, on
         />
       )}
 
-      <PageHeader title={relationship.codename} onBack={onBack} theme={theme} />
+      {/* 代號標題（可編輯） */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+        <button onClick={onBack} style={{
+          background: 'transparent', border: 'none', color: theme.t3, cursor: 'pointer',
+          padding: '4px 8px 4px 0', display: 'flex', alignItems: 'center', gap: 4, fontSize: 13,
+          fontFamily: font,
+        }}>
+          <Icon name="chevronLeft" size={16} color={theme.t3} />
+          返回
+        </button>
+        {editingCodename ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+            <input
+              type="text"
+              value={codenameInput}
+              onChange={e => setCodenameInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleSaveCodename(); if (e.key === 'Escape') setEditingCodename(false); }}
+              style={{ ...inputStyle(theme), fontSize: 18, fontWeight: 500, fontFamily: font, flex: 1 }}
+              autoFocus
+            />
+            <button onClick={() => setEditingCodename(false)} style={btnSecondary(theme)}>取消</button>
+            <button onClick={handleSaveCodename} disabled={!codenameInput.trim()} style={btnPrimary(theme, !codenameInput.trim())}>儲存</button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 500, color: theme.t1, fontFamily: font }}>{relationship.codename}</h2>
+            <button onClick={() => { setEditingCodename(true); setCodenameInput(relationship.codename); }} style={{
+              background: 'transparent', border: 'none', color: theme.t3, cursor: 'pointer',
+              padding: 4, display: 'flex', alignItems: 'center',
+            }}><Icon name="edit" size={14} color={theme.t3} /></button>
+          </div>
+        )}
+      </div>
 
       {/* 階段卡 */}
       <div style={{ ...cardStyle(theme), marginBottom: 16 }}>
@@ -3874,22 +4245,73 @@ function RelationshipDetailPage({ theme, isMobile, relationship, depthGauges, on
       {sortedGauges.length > 0 && (
         <div style={{ ...cardStyle(theme), marginBottom: 16 }}>
           <div style={{ fontSize: 14, fontWeight: 500, color: theme.t1, marginBottom: 12, fontFamily: font }}>量表紀錄</div>
-          {sortedGauges.map((g, i) => (
-            <div key={g.id} style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '8px 0',
-              borderBottom: i < sortedGauges.length - 1 ? '0.5px solid ' + theme.border : 'none',
-            }}>
-              <span style={{ fontSize: 13, color: theme.t2 }}>{g.weekNumber}</span>
-              <span style={{
-                fontSize: 12, padding: '2px 8px', borderRadius: 4,
-                background: gaugeAlertColor(g.alertLevel, theme) + '20',
-                color: gaugeAlertColor(g.alertLevel, theme),
+          {sortedGauges.map((g, i) => {
+            const prev = sortedGauges[i + 1] || null;
+            const qFields = [
+              { key: 'q1_thoughtPercentage', label: '思緒' },
+              { key: 'q2_changeForHim', label: '改變' },
+              { key: 'q3_messageAnxiety', label: '訊息' },
+              { key: 'q4_selfIgnore', label: '忽略' },
+              { key: 'q5_talkAboutHimRatio', label: '聊他' },
+              { key: 'q6_collapseIfGone', label: '依存' },
+            ];
+            const totalNow = qFields.reduce((s, f) => s + (g[f.key] || 0), 0);
+            const totalPrev = prev ? qFields.reduce((s, f) => s + (prev[f.key] || 0), 0) : null;
+            const delta = totalPrev !== null ? totalNow - totalPrev : null;
+            return (
+              <div key={g.id} style={{
+                padding: '12px 0',
+                borderBottom: i < sortedGauges.length - 1 ? '0.5px solid ' + theme.border : 'none',
               }}>
-                {gaugeAlertLabel(g.alertLevel)}
-              </span>
-            </div>
-          ))}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 13, color: theme.t2 }}>
+                      {g.weekStartDate ? weekDateRange(g.weekStartDate) : g.weekNumber}
+                    </span>
+                    {delta !== null && (
+                      <span style={{ fontSize: 11, color: delta > 0 ? theme.coral : delta < 0 ? theme.accent : theme.t3 }}>
+                        {delta > 0 ? '▲ +' + delta : delta < 0 ? '▼ ' + delta : '→ 持平'}
+                      </span>
+                    )}
+                  </div>
+                  <span style={{
+                    fontSize: 12, padding: '2px 8px', borderRadius: 4,
+                    background: gaugeAlertColor(g.alertLevel, theme) + '20',
+                    color: gaugeAlertColor(g.alertLevel, theme),
+                  }}>
+                    {gaugeAlertLabel(g.alertLevel)}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                  {qFields.map(f => {
+                    const score = g[f.key] || 0;
+                    const prevScore = prev ? (prev[f.key] || 0) : null;
+                    const scoreDelta = prevScore !== null ? score - prevScore : null;
+                    return (
+                      <div key={f.key} style={{
+                        display: 'flex', flexDirection: 'column', alignItems: 'center',
+                        background: theme.bgDeep, borderRadius: 6, padding: '4px 8px', minWidth: 36,
+                      }}>
+                        <div style={{ fontSize: 10, color: theme.t3, marginBottom: 2 }}>{f.label}</div>
+                        <div style={{
+                          fontSize: 14, fontWeight: 500,
+                          color: score >= 7 ? theme.coral : score >= 5 ? theme.navy : theme.accent,
+                        }}>{score || '—'}</div>
+                        {scoreDelta !== null && score > 0 && (
+                          <div style={{ fontSize: 9, color: scoreDelta > 0 ? theme.coral : scoreDelta < 0 ? theme.accent : theme.t3 }}>
+                            {scoreDelta > 0 ? '+' + scoreDelta : scoreDelta < 0 ? scoreDelta : '—'}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                {g.note && (
+                  <div style={{ fontSize: 12, color: theme.t3, marginTop: 8, fontStyle: 'italic' }}>{g.note}</div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -3930,7 +4352,22 @@ function RelationshipDetailPage({ theme, isMobile, relationship, depthGauges, on
               style={{ ...btnSecondary(theme), color: theme.coral, borderColor: theme.coral + '50' }}>
               結束追蹤
             </button>
+            <button
+              onClick={() => setStageModal('delete')}
+              style={{ ...btnSecondary(theme), color: theme.coral, borderColor: theme.coral + '50', opacity: 0.7 }}>
+              刪除這段關係
+            </button>
           </div>
+        </div>
+      )}
+      {relationship.currentStage === 'ended' && (
+        <div style={{ ...cardStyle(theme), marginTop: 16 }}>
+          <div style={{ fontSize: 12, color: theme.t3, marginBottom: 12, letterSpacing: '0.04em' }}>—— 管理 ——</div>
+          <button
+            onClick={() => setStageModal('delete')}
+            style={{ ...btnSecondary(theme), color: theme.coral, borderColor: theme.coral + '50', opacity: 0.7 }}>
+            刪除這段關係紀錄
+          </button>
         </div>
       )}
 
@@ -4007,6 +4444,19 @@ function RelationshipDetailPage({ theme, isMobile, relationship, depthGauges, on
                 </div>
               </>
             )}
+
+            {stageModal === 'delete' && (
+              <>
+                <div style={{ fontSize: 16, fontWeight: 500, color: theme.coral, marginBottom: 12, fontFamily: font }}>刪除這段關係</div>
+                <p style={{ fontSize: 14, color: theme.t2, lineHeight: 1.7, margin: '0 0 20px' }}>
+                  這將永久刪除「{relationship.codename}」的所有追蹤紀錄，包含量表記錄，且無法復原。<br />確定要刪除嗎？
+                </p>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                  <button onClick={() => setStageModal(null)} style={btnSecondary(theme)}>取消</button>
+                  <button onClick={handleStageConfirm} style={{ ...btnPrimary(theme), background: theme.coral }}>確認刪除</button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -4054,6 +4504,7 @@ function DepthGaugePage({ theme, isMobile, relationship, onBack, onSave }) {
       id: genId(),
       relationshipId: relationship.id,
       weekNumber: getWeekNumber(todayStr()),
+      weekStartDate: getWeekMonday(todayStr()),
       q1_thoughtPercentage: scores.q1,
       q2_changeForHim: scores.q2,
       q3_messageAnxiety: scores.q3,
@@ -4502,6 +4953,29 @@ export default function App() {
     showToast('neutral', '已更新');
   }, [showToast]);
 
+  // 小勇敢分類管理
+  const [courageCategories, setCourageCategories] = useState(() => {
+    try {
+      const saved = localStorage.getItem(lsKey('courageCategories'));
+      return saved ? JSON.parse(saved) : [
+        { id: 'solo', label: '獨自行動', archived: false },
+        { id: 'social', label: '社交互動', archived: false },
+        { id: 'voice', label: '說出來', archived: false },
+        { id: 'expression', label: '表達自己', archived: false },
+        { id: 'other', label: '其他', archived: false },
+      ];
+    } catch { return [
+      { id: 'solo', label: '獨自行動', archived: false },
+      { id: 'social', label: '社交互動', archived: false },
+      { id: 'voice', label: '說出來', archived: false },
+      { id: 'expression', label: '表達自己', archived: false },
+      { id: 'other', label: '其他', archived: false },
+    ]; }
+  });
+  useEffect(() => {
+    localStorage.setItem(lsKey('courageCategories'), JSON.stringify(courageCategories));
+  }, [courageCategories]);
+
   const deleteMorning = useCallback((id) => {
     const deleted = morningAnchors.find(a => a.id === id);
     setMorningAnchors(prev => prev.filter(a => a.id !== id));
@@ -4820,7 +5294,14 @@ export default function App() {
               onSave={saveRitual} onEdit={editRitual} onDelete={deleteRitual} />
           )}
           {currentPage === PAGES.COURAGE && (
-            <CouragePage theme={theme} isMobile={isMobile} smallCourages={smallCourages} onSave={saveCourage} onDelete={deleteCourage} onEdit={editCourage} />
+            <CouragePage theme={theme} isMobile={isMobile} smallCourages={smallCourages} onSave={saveCourage} onDelete={deleteCourage} onEdit={editCourage}
+              courageCategories={courageCategories} onUpdateCategories={setCourageCategories}
+              onDeleteCategoryWithRecords={(catId) => {
+                setCourageCategories(prev => prev.filter(c => c.id !== catId));
+                setSmallCourages(prev => prev.filter(c => c.category !== catId));
+                showToast('neutral', '分類與相關記錄已刪除');
+              }}
+            />
           )}
           {currentPage === PAGES.RELATIONSHIP && (
             relSubPage.type === 'list' ? (
@@ -4838,6 +5319,11 @@ export default function App() {
                 onBack={() => setRelSubPage({ type: 'list' })}
                 onNavigateToGauge={(relId) => setRelSubPage({ type: 'gauge', relationshipId: relId })}
                 onUpdateRelationship={updateRelationship}
+                onDeleteRelationship={(id) => {
+                  setRelationships(prev => prev.filter(r => r.id !== id));
+                  setDepthGauges(prev => prev.filter(g => g.relationshipId !== id));
+                  showToast('neutral', '已刪除關係紀錄');
+                }}
                 showToast={showToast}
               />
             ) : relSubPage.type === 'gauge' ? (
