@@ -2171,7 +2171,7 @@ function RitualPage({ theme, isMobile, ritualEntries, onSave, onDelete, onEdit }
        <p style={{ margin: 0, fontSize: 13, color: theme.t3, fontStyle: 'italic' }}>想做就做，不做沒關係</p>
       </div>
       <p style={{ margin: '0 0 28px', fontSize: 13, color: theme.t2, fontStyle: 'italic', lineHeight: 1.7, paddingLeft: 12, borderLeft: '2px solid ' + theme.accentLight }}>
-        儀式的意義不在於「完成」，而在於你有意識地為自己創造一個空間。哪怕只做了其中一個步驟，哪怕只是翻開這個頁面想了想——也算。
+        儀式的意義不在於「完成」，而在於你有意識地為自己創造一個空間。<br />哪怕只做了其中一個步驟，哪怕只是翻開這個頁面想了想——也算。
       </p>
       {RITUAL_TYPES.map(ritual => (
         <RitualCard key={ritual.id} ritual={ritual} theme={theme} onRecord={(data) => onSave({ id: genId(), date: todayStr(), ...data, createdAt: Date.now() })} />
@@ -2516,8 +2516,8 @@ function CouragePage({ theme, isMobile, smallCourages, onSave, onDelete, onEdit,
           管理分類
         </button>
       </div>
-      <p style={{ margin: '0 0 20px', fontSize: 13, color: theme.t2, fontStyle: 'italic', lineHeight: 1.7, paddingLeft: 12, borderLeft: '2px solid ' + theme.accentLight, whiteSpace: 'pre-line' }}>
-        練習拓展自己的舒適圈邊界，累積之後看見自己真的在長大。\n不是要你每天都勇敢，而是讓你知道：你做到過。
+      <p style={{ margin: '0 0 20px', fontSize: 13, color: theme.t2, fontStyle: 'italic', lineHeight: 1.7, paddingLeft: 12, borderLeft: '2px solid ' + theme.accentLight }}>
+        練習拓展自己的舒適圈邊界，累積之後看見自己真的在長大。<br />不是要你每天都勇敢，而是讓你知道：你做到過。
       </p>
 
       {/* 分類管理 */}
@@ -3502,6 +3502,14 @@ function RelationshipSupportPage({ theme, isMobile, relationships, groundFriends
   ];
   const [activeTab, setActiveTab] = useState('ground');
   const isAI = activeTab === 'ai';
+
+  const purposeMap = {
+    ground: `真人的連結無法被取代。\n在情緒的浪頭上，找一個能讓你「落地」的朋友——不是讓他幫你解決，而是讓他看見你。`,
+    identify: `不是每一段關係都需要進入深水區。\n用這些工具幫自己看清楚：這段關係讓你更像自己，還是更不像？`,
+    lower: `當你感覺自己開始漂流，這個 protocol 幫你慢慢把重心帶回來。\n不是懲罰，不是逃跑——是善意地照顧自己。`,
+    open: `14 天，只是觀察，不做決定。\n在這個標記裡，你允許自己好奇，但不允許自己全力投入。`,
+    ai: `Raman 是你內在的聲音，不是替代品。\n先試著跟真人聊聊，實在找不到的時候，再來這裡。`,
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: isAI ? (isMobile ? 'calc(100dvh - 56px)' : '100dvh') : 'auto', minHeight: isAI ? undefined : 'auto' }}>
@@ -5185,20 +5193,14 @@ export default function App() {
   const [courageCategories, setCourageCategories] = useState(() => {
     try {
       const saved = localStorage.getItem(lsKey('courageCategories'));
-      return saved ? JSON.parse(saved) : [
-        { id: 'solo', label: '獨自行動', archived: false },
-        { id: 'social', label: '社交互動', archived: false },
-        { id: 'voice', label: '說出來', archived: false },
-        { id: 'expression', label: '表達自己', archived: false },
-        { id: 'other', label: '其他', archived: false },
-      ];
-    } catch { return [
-      { id: 'solo', label: '獨自行動', archived: false },
-      { id: 'social', label: '社交互動', archived: false },
-      { id: 'voice', label: '說出來', archived: false },
-      { id: 'expression', label: '表達自己', archived: false },
-      { id: 'other', label: '其他', archived: false },
-    ]; }
+      if (!saved) return DEFAULT_COURAGE_CATEGORIES;
+      const parsed = JSON.parse(saved);
+      // 補上內建分類的 definition/examples（舊版 localStorage 沒有這些欄位）
+      return parsed.map(c => {
+        const def = DEFAULT_COURAGE_CATEGORIES.find(d => d.id === c.id);
+        return def ? { ...def, ...c } : c;
+      });
+    } catch { return DEFAULT_COURAGE_CATEGORIES; }
   });
   useEffect(() => {
     localStorage.setItem(lsKey('courageCategories'), JSON.stringify(courageCategories));
