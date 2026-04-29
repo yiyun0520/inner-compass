@@ -29,6 +29,23 @@ function fsPath(uid, colKey) {
   return doc(db, 'users', uid, 'ic', colKey);
 }
 
+function mergeItems(local, cloud) {
+  const map = {};
+  (cloud || []).forEach(item => { if (item?.id) map[item.id] = item; });
+  (local || []).forEach(item => {
+    if (!item?.id) return;
+    const existing = map[item.id];
+    if (!existing) {
+      map[item.id] = item;
+    } else {
+      const localTs = item.sealedAt || item.updatedAt || item.createdAt || 0;
+      const cloudTs = existing.sealedAt || existing.updatedAt || existing.createdAt || 0;
+      if (localTs > cloudTs) map[item.id] = item;
+    }
+  });
+  return Object.values(map);
+}
+
 // ─── Main hook ───────────────────────────────────────────────────────────────
 
 export function useSync(user) {
@@ -52,7 +69,6 @@ export function useSync(user) {
 
   const [syncStatus, setSyncStatus]   = useState('signedOut');
   const [lastSyncAt, setLastSyncAt]   = useState(null);
-  const [mergeModal, setMergeModal]   = useState(null); // { cloudData } or null
 
   // Keep user in a ref so write callbacks don't need to re-create on user change
   const userRef = useRef(user);
@@ -165,6 +181,24 @@ export function useSync(user) {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Merge cloud + local by ID, higher timestamp wins
+  const applyMergedData = useCallback((cloudData, uid) => {
+    const merged = {};
+    COLLECTIONS.forEach(col => {
+      const local = loadLocal(col);
+      const cloud = cloudData[col] || [];
+      merged[col] = mergeItems(local, cloud);
+      const setter = stateMap[col][1];
+      setter(merged[col]);
+      localStorage.setItem(LS(col), JSON.stringify(merged[col]));
+    });
+    if (cloudData._settings?.themeKey) {
+      setTK(cloudData._settings.themeKey);
+      localStorage.setItem(LS('theme'), cloudData._settings.themeKey);
+    }
+    Promise.all(COLLECTIONS.map(col => writeCol(uid, col, merged[col]))).catch(() => {});
+  }, [writeCol]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Push all local data to Firestore
   const pushLocalToCloud = useCallback(async (uid) => {
     setSyncStatus('syncing');
@@ -203,8 +237,9 @@ export function useSync(user) {
       const hasLocal = COLLECTIONS.some(col => loadLocal(col).length > 0);
 
       if (hasCloud && hasLocal) {
-        // Both exist: ask user
-        setMergeModal({ cloudData });
+        // Both exist: smart-merge (local item wins if its timestamp is higher)
+        applyMergedData(cloudData, uid);
+        setLastSyncAt(Date.now());
         setSyncStatus('synced');
       } else if (hasCloud) {
         // Cloud only: load cloud
@@ -219,20 +254,6 @@ export function useSync(user) {
       setSyncStatus('offline');
     });
   }, [user?.uid]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Handle merge modal decision ───────────────────────────────────────────
-  const resolveUseCloud = useCallback(() => {
-    if (!mergeModal) return;
-    applyCloudData(mergeModal.cloudData);
-    setLastSyncAt(Date.now());
-    setMergeModal(null);
-  }, [mergeModal, applyCloudData]);
-
-  const resolveUseLocal = useCallback(() => {
-    if (!user || !mergeModal) return;
-    setMergeModal(null);
-    pushLocalToCloud(user.uid);
-  }, [user, mergeModal, pushLocalToCloud]);
 
   // ── Manual sync (push local → cloud) ──────────────────────────────────────
   const syncNow = useCallback(async () => {
@@ -275,7 +296,5 @@ export function useSync(user) {
     setQuarterlyReviews, setYearlyReviews, setThemeKey,
     // Sync
     syncStatus, lastSyncAt, syncNow,
-    // Merge modal
-    mergeModal, resolveUseCloud, resolveUseLocal,
   };
 }

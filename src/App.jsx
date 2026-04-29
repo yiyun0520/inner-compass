@@ -76,6 +76,20 @@ function genId() {
   return Date.now() + '-' + Math.random().toString(36).slice(2, 9);
 }
 
+function mergeItems(local, incoming) {
+  const map = {};
+  (incoming || []).forEach(item => { if (item?.id) map[item.id] = item; });
+  (local || []).forEach(item => {
+    if (!item?.id) return;
+    const existing = map[item.id];
+    if (!existing) { map[item.id] = item; return; }
+    const localTs = item.sealedAt || item.updatedAt || item.createdAt || 0;
+    const inTs = existing.sealedAt || existing.updatedAt || existing.createdAt || 0;
+    if (localTs > inTs) map[item.id] = item;
+  });
+  return Object.values(map);
+}
+
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -781,20 +795,18 @@ function HomePage({ theme, isMobile, onNavigate, morningAnchors, sundayWitnesses
   return (
     <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '20px 16px 100px' : '32px 24px 80px' }}>
       {/* 其他入口（頂部） */}
-      <div style={{ ...cardStyle(theme), marginBottom: 20, padding: '14px 16px' }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
-          {[
-            { label: '儀式菜單', page: PAGES.RITUAL },
-            { label: '月度獨處', page: PAGES.DAILY, tab: 'monthly' },
-            { label: '關係管理', page: PAGES.RELATIONSHIP },
-            { label: '關係支援', page: PAGES.SUPPORT },
-            { label: '回顧', page: PAGES.REVIEW },
-          ].map(item => (
-            <button key={item.label} onClick={() => onNavigate(item.page, item.tab)} style={{
-              ...btnSecondary(theme), padding: '7px 14px', fontSize: 13,
-            }}>{item.label}</button>
-          ))}
-        </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 20 }}>
+        {[
+          { label: '儀式菜單', page: PAGES.RITUAL },
+          { label: '月度獨處', page: PAGES.DAILY, tab: 'monthly' },
+          { label: '關係管理', page: PAGES.RELATIONSHIP },
+          { label: '關係支援', page: PAGES.SUPPORT },
+          { label: '回顧', page: PAGES.REVIEW },
+        ].map(item => (
+          <button key={item.label} onClick={() => onNavigate(item.page, item.tab)} style={{
+            ...btnSecondary(theme), padding: '7px 14px', fontSize: 13,
+          }}>{item.label}</button>
+        ))}
       </div>
 
       {/* 引言卡 */}
@@ -1822,8 +1834,8 @@ function DailyPage({ theme, isMobile, initialTab, morningAnchors, sundayWitnesse
 
   const purposeMap = {
     morning: `在一天的喧鬧開始之前，先回到自己這裡。\n不是為了計畫，而是為了看見此刻的你——不評判，不期待。哪怕只有一句話，也算到了。`,
-    witness: `每週給自己 30 分鐘，見證這一週真實活過的樣子。\n不評分，不比較，不要問「這週夠好嗎？」——只是陪著自己好好看見。\n\n你是自己的見證人，不是審判者。見證本身就是療癒。`,
-    monthly: `每個月給自己一天（或半天），找回自己的重心。\n✦做：任何讓你覺得「我在這裡」的事——可以是讀一本放很久的書、在咖啡廳發呆、什麼都不計畫地走走。只要你是跟著自己的節奏走，都算。\n◌ 放下：輕輕放下那些讓你「不在了」的事——社群、訊息、追劇、YouTube……任何讓你一直在接收、卻離自己越來越遠的事，今天都可以先放著。`,
+    witness: `每週給自己 30 分鐘，見證這一週真實活過的樣子。\n不評分，不比較，不要問「這週夠好嗎？」\n——只是陪著自己好好看見。\n\n你是自己的見證人，不是審判者。見證本身就是療癒。`,
+    monthly: `每個月給自己一天（或半天），找回自己的重心。\n\n✦做：任何讓你覺得「我在這裡」的事\n　　　——可以是讀一本放很久的書、在咖啡廳發呆、什麼都不計畫地走走。只要你是跟著自己的節奏走，都算。\n◌ 放下：輕輕放下那些讓你「不在了」的事\n　　　——社群、訊息、追劇、YouTube……任何讓你一直在接收、卻離自己越來越遠的事，今天都可以先放著。`,
   };
 
   return (
@@ -2157,10 +2169,10 @@ function RitualPage({ theme, isMobile, ritualEntries, onSave, onDelete, onEdit }
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, margin: '0 0 8px' }}>
        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 500, color: theme.t1, fontFamily: font }}>儀式菜單</h2>
        <p style={{ margin: 0, fontSize: 13, color: theme.t3, fontStyle: 'italic' }}>想做就做，不做沒關係</p>
-       <p style={{ margin: '0 0 28px', fontSize: 13, color: theme.t2, fontStyle: 'italic', lineHeight: 1.7, paddingLeft: 12, borderLeft: '2px solid ' + theme.accentLight }}>
+      </div>
+      <p style={{ margin: '0 0 28px', fontSize: 13, color: theme.t2, fontStyle: 'italic', lineHeight: 1.7, paddingLeft: 12, borderLeft: '2px solid ' + theme.accentLight }}>
         儀式的意義不在於「完成」，而在於你有意識地為自己創造一個空間。哪怕只做了其中一個步驟，哪怕只是翻開這個頁面想了想——也算。
       </p>
-      </div>
       {RITUAL_TYPES.map(ritual => (
         <RitualCard key={ritual.id} ritual={ritual} theme={theme} onRecord={(data) => onSave({ id: genId(), date: todayStr(), ...data, createdAt: Date.now() })} />
       ))}
@@ -2504,8 +2516,8 @@ function CouragePage({ theme, isMobile, smallCourages, onSave, onDelete, onEdit,
           管理分類
         </button>
       </div>
-      <p style={{ margin: '0 0 20px', fontSize: 13, color: theme.t2, fontStyle: 'italic', lineHeight: 1.7, paddingLeft: 12, borderLeft: '2px solid ' + theme.accentLight }}>
-        練習拓展自己的舒適圈邊界，累積之後看見自己真的在長大。不是要你每天都勇敢，而是讓你知道：你做到過。
+      <p style={{ margin: '0 0 20px', fontSize: 13, color: theme.t2, fontStyle: 'italic', lineHeight: 1.7, paddingLeft: 12, borderLeft: '2px solid ' + theme.accentLight, whiteSpace: 'pre-line' }}>
+        練習拓展自己的舒適圈邊界，累積之後看見自己真的在長大。\n不是要你每天都勇敢，而是讓你知道：你做到過。
       </p>
 
       {/* 分類管理 */}
@@ -2868,16 +2880,15 @@ function GroundFriendTab({ theme, isMobile, groundFriends, groundFriendCheckIns,
   return (
     <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '20px 16px 80px' : '28px 24px 80px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-        <div>
-          <div style={{ fontSize: 18, fontWeight: 500, color: theme.t1, fontFamily: font }}>地面朋友</div>
-          <div style={{ fontSize: 12, color: theme.t3, marginTop: 4, fontFamily: font, fontStyle: 'italic' }}>喜歡你這個人，不只喜歡戀愛中的你</div>
+        <div style={{ fontSize: 18, fontWeight: 500, color: theme.t1, fontFamily: font }}>
+              地面朋友<span style={{ fontSize: 12, color: theme.t3, marginLeft: 8, fontStyle: 'italic' }}>喜歡你這個人，不只喜歡戀愛中的你</span>
         </div>
         {!adding && !editingFriendId && groundFriends.length < 3 && (
           <button onClick={() => setAdding(true)} style={{ ...btnPrimary(theme, false), padding: '8px 16px', fontSize: 13 }}>新增朋友</button>
         )}
       </div>
-      <div style={{ fontSize: 13, color: theme.t2, lineHeight: 1.7, marginBottom: 20, fontFamily: font }}>
-        戀愛會讓人漂起來——漂得很甜，但也很容易飄走。地面朋友的任務很簡單：每兩週跟你說一次話，把你拉回來。不是要他們評論你的對象，是要他們看著你。
+      <div style={{ fontSize: 13, color: theme.t2, lineHeight: 1.7, marginBottom: 20, fontFamily: font, borderLeft: '2px solid ' + theme.accentLight }}>
+        戀愛會讓人漂起來。地面朋友的任務很簡單：每兩週跟你說一次話，把你拉回來。<br />不是要他們評論你的對象，是要他們看著你。
       </div>
 
       {adding && <FriendForm friend={null} onSave={onSaveFriend} onCancel={() => setAdding(false)} />}
@@ -3055,8 +3066,8 @@ function IdentificationTab({ theme, isMobile, relationships, identificationAsses
     <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '20px 16px 80px' : '28px 24px 80px' }}>
       <div style={{ fontSize: 18, fontWeight: 500, color: theme.t1, fontFamily: font, marginBottom: 6 }}>辨識工具箱</div>
       <div style={{ fontSize: 12, color: theme.t3, fontStyle: 'italic', marginBottom: 8, fontFamily: font }}>在看清楚之前，先不要做決定</div>
-      <div style={{ fontSize: 13, color: theme.t2, lineHeight: 1.7, marginBottom: 24, fontFamily: font }}>
-        感覺發酵的時候，最需要理性的補充。五項核對幫你評估對方是否真的適合你；三個 deal breaker 幫你辨識哪些訊號不能被情緒掩蓋。
+      <div style={{ fontSize: 13, color: theme.t2, lineHeight: 1.7, marginBottom: 24, fontFamily: font, borderLeft: '2px solid ' + theme.accentLight }}>
+        感覺發酵的時候，最需要理性的補充。在關係成形前，先看清楚你在進入什麼。<br />五項核對幫你評估對方是否真的適合你；三個 deal breaker 幫你辨識哪些訊號不能被情緒掩蓋。
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 28 }}>
         {[
@@ -3122,8 +3133,8 @@ function LoweringTab({ theme, isMobile, relationships, loweringProtocols, onSave
     <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '20px 16px 80px' : '28px 24px 80px' }}>
       <div style={{ fontSize: 18, fontWeight: 500, color: theme.t1, fontFamily: font, marginBottom: 6 }}>降低捲入度</div>
       <div style={{ fontSize: 12, color: theme.t3, fontStyle: 'italic', marginBottom: 8, fontFamily: font }}>不是懲罰，是保護自己的空間</div>
-      <div style={{ fontSize: 13, color: theme.t2, lineHeight: 1.7, marginBottom: 20, fontFamily: font }}>
-        當你發現自己在這段關係裡太用力、太深，這套六項練習幫你找回距離感。不是放棄，是重新把重心放回自己身上。
+      <div style={{ fontSize: 13, color: theme.t2, lineHeight: 1.7, marginBottom: 20, fontFamily: font, borderLeft: '2px solid ' + theme.accentLight }}>
+        當你發現自己在這段關係裡太用力、捲入太深，用這套六項練習幫你找回距離感。不是懲罰，是重新把重心放回自己身上。
       </div>
       <div style={{ ...cardStyle(theme), marginBottom: 16, background: theme.accent + '08' }}>
         <div style={{ fontSize: 12, color: theme.t2, lineHeight: 1.7, fontFamily: font, fontStyle: 'italic' }}>
@@ -3203,8 +3214,8 @@ function OpenMarkTab({ theme, isMobile, openMarks, relationships, onSaveMark }) 
         </div>
         {!adding && <button onClick={() => setAdding(true)} style={{ ...btnPrimary(theme, false), padding: '8px 16px', fontSize: 13 }}>新增標記</button>}
       </div>
-      <div style={{ fontSize: 13, color: theme.t2, lineHeight: 1.7, marginBottom: 20, fontFamily: font }}>
-        對某人有感覺，但還不確定值不值得投入？用 14 天保持 10% 的開放——觀察，記錄，再決定要追蹤還是放下。
+      <div style={{ fontSize: 13, color: theme.t2, lineHeight: 1.7, marginBottom: 20, fontFamily: font, borderLeft: '2px solid ' + theme.accentLight }}>
+        對某人有感覺，但還不確定值不值得投入？在確認是否追蹤之前，給自己 14 天的觀察窗口——只是看，不是決定。
       </div>
       {adding && (
         <div style={{ ...cardStyle(theme), marginBottom: 16 }}>
@@ -3492,14 +3503,6 @@ function RelationshipSupportPage({ theme, isMobile, relationships, groundFriends
   const [activeTab, setActiveTab] = useState('ground');
   const isAI = activeTab === 'ai';
 
-  const purposeMap = {
-    ground: '戀愛會讓人漂起來。地面朋友的任務很簡單：每兩週跟你說一次話，把你拉回來。\n不是要他們評論你的對象，是要他們看著你。',
-    identify: '三十天、五項核對、三個 deal breaker——在關係成形前，先看清楚你在進入什麼。',
-    lower: '當你意識到捲入太深，這裡有一份 14 天的回歸清單。不是懲罰，是把重心拿回來。',
-    open: '在確認是否追蹤之前，給自己 14 天的觀察窗口——只是看，不是決定。',
-    ai: 'Raman 在這裡。她不會跟你一起說服自己，她只陪你看見。',
-  };
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: isAI ? (isMobile ? 'calc(100dvh - 56px)' : '100dvh') : 'auto', minHeight: isAI ? undefined : 'auto' }}>
       <div style={{ padding: isMobile ? '16px 16px 0' : '20px 24px 0', background: theme.bg, flexShrink: 0 }}>
@@ -3508,14 +3511,14 @@ function RelationshipSupportPage({ theme, isMobile, relationships, groundFriends
           <p style={{ margin: 0, fontSize: 13, color: theme.t3, fontStyle: 'italic' }}>深度關係的自我見證工具</p>
         </div>
       </div>
-      <div style={{ display: 'flex', borderBottom: '1.5px solid ' + theme.border, background: theme.bg, flexShrink: 0 }}>
+      <div style={{ display: 'flex', borderBottom: '1.5px solid ' + theme.border, background: theme.bg, flexShrink: 0, overflowX: 'auto', scrollbarWidth: 'none' }}>
         {tabs.map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
-            flex: 1, background: 'transparent', border: 'none', cursor: 'pointer',
+            flexShrink: 0, background: 'transparent', border: 'none', cursor: 'pointer',
             color: activeTab === tab.id ? theme.accent : theme.t3, fontFamily: font,
-            fontSize: 14,
+            fontSize: 14, whiteSpace: 'nowrap',
             borderBottom: activeTab === tab.id ? '2px solid ' + theme.accent : '2px solid transparent',
-            padding: '11px 4px', marginBottom: -1.5,
+            padding: '11px 16px', marginBottom: -1.5,
             fontWeight: activeTab === tab.id ? 500 : 400,
             transition: 'all 150ms', textAlign: 'center',
           }}>{tab.label}</button>
@@ -4339,7 +4342,9 @@ function RelationshipDetailPage({ theme, isMobile, relationship, depthGauges, on
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 13, color: theme.t2 }}>
-                      {g.weekStartDate ? formatDateMD(g.weekStartDate) : g.weekNumber}
+                      {g.createdAt
+                        ? formatDateMD(new Date(g.createdAt).toISOString().slice(0, 10))
+                        : (g.weekStartDate ? formatDateMD(g.weekStartDate) : g.weekNumber)}
                     </span>
                     {delta !== null && (
                       <span style={{ fontSize: 11, color: delta > 0 ? theme.coral : delta < 0 ? theme.accent : theme.t3 }}>
@@ -5103,7 +5108,6 @@ export default function App() {
     setIdentificationAssessments, setLoweringProtocols, setAiCompanionSessions,
     setQuarterlyReviews, setYearlyReviews, setThemeKey,
     syncStatus, lastSyncAt, syncNow,
-    mergeModal, resolveUseCloud, resolveUseLocal,
   } = useSync(user);
 
   const theme = themes[themeKey];
@@ -5345,11 +5349,11 @@ export default function App() {
         const imported = JSON.parse(ev.target.result);
         if (imported.type !== 'inner-compass-daily') { showToast('error', '檔案格式不符'); return; }
         const d = imported.data;
-        if (d.morningAnchors) setMorningAnchors(d.morningAnchors);
-        if (d.sundayWitnesses) setSundayWitnesses(d.sundayWitnesses);
-        if (d.monthlySolos) setMonthlySolos(d.monthlySolos);
-        if (d.smallCourages) setSmallCourages(d.smallCourages);
-        if (d.ritualEntries) setRitualEntries(d.ritualEntries);
+        if (d.morningAnchors) setMorningAnchors(prev => mergeItems(prev, d.morningAnchors));
+        if (d.sundayWitnesses) setSundayWitnesses(prev => mergeItems(prev, d.sundayWitnesses));
+        if (d.monthlySolos) setMonthlySolos(prev => mergeItems(prev, d.monthlySolos));
+        if (d.smallCourages) setSmallCourages(prev => mergeItems(prev, d.smallCourages));
+        if (d.ritualEntries) setRitualEntries(prev => mergeItems(prev, d.ritualEntries));
         showToast('neutral', '日常紀錄已匯入');
       } catch { showToast('error', '匯入失敗：檔案解析錯誤'); }
     };
@@ -5392,14 +5396,14 @@ export default function App() {
         const imported = JSON.parse(ev.target.result);
         if (imported.type !== 'inner-compass-relationships') { showToast('error', '檔案格式不符'); return; }
         const d = imported.data;
-        if (d.relationships) setRelationships(d.relationships);
-        if (d.depthGauges) setDepthGauges(d.depthGauges);
-        if (d.groundFriends) setGroundFriends(d.groundFriends);
-        if (d.groundFriendCheckIns) setGroundFriendCheckIns(d.groundFriendCheckIns);
-        if (d.openMarks) setOpenMarks(d.openMarks);
-        if (d.identificationAssessments) setIdentificationAssessments(d.identificationAssessments);
-        if (d.loweringProtocols) setLoweringProtocols(d.loweringProtocols);
-        if (d.aiCompanionSessions) setAiCompanionSessions(d.aiCompanionSessions);
+        if (d.relationships) setRelationships(prev => mergeItems(prev, d.relationships));
+        if (d.depthGauges) setDepthGauges(prev => mergeItems(prev, d.depthGauges));
+        if (d.groundFriends) setGroundFriends(prev => mergeItems(prev, d.groundFriends));
+        if (d.groundFriendCheckIns) setGroundFriendCheckIns(prev => mergeItems(prev, d.groundFriendCheckIns));
+        if (d.openMarks) setOpenMarks(prev => mergeItems(prev, d.openMarks));
+        if (d.identificationAssessments) setIdentificationAssessments(prev => mergeItems(prev, d.identificationAssessments));
+        if (d.loweringProtocols) setLoweringProtocols(prev => mergeItems(prev, d.loweringProtocols));
+        if (d.aiCompanionSessions) setAiCompanionSessions(prev => mergeItems(prev, d.aiCompanionSessions));
         showToast('neutral', '關係資料已匯入');
       } catch { showToast('error', '匯入失敗：檔案解析錯誤'); }
     };
@@ -5432,8 +5436,8 @@ export default function App() {
         const imported = JSON.parse(ev.target.result);
         if (imported.type !== 'inner-compass-reviews') { showToast('error', '檔案格式不符'); return; }
         const d = imported.data;
-        if (d.quarterlyReviews) setQuarterlyReviews(d.quarterlyReviews);
-        if (d.yearlyReviews) setYearlyReviews(d.yearlyReviews);
+        if (d.quarterlyReviews) setQuarterlyReviews(prev => mergeItems(prev, d.quarterlyReviews));
+        if (d.yearlyReviews) setYearlyReviews(prev => mergeItems(prev, d.yearlyReviews));
         showToast('neutral', '回顧紀錄已匯入');
       } catch { showToast('error', '匯入失敗：檔案解析錯誤'); }
     };
@@ -5604,32 +5608,6 @@ export default function App() {
 
       {/* 底部導航 (mobile) */}
       {isMobile && <BottomNav currentPage={currentPage} onNavigate={navigate} theme={theme} />}
-
-      {/* 雲端資料合併確認 Modal */}
-      {mergeModal && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 2000, padding: 16,
-        }}>
-          <div style={{
-            background: theme.bgCard, borderRadius: 12, padding: 24,
-            maxWidth: 380, width: '100%',
-            border: '0.5px solid ' + theme.border,
-          }}>
-            <div style={{ fontSize: 16, fontWeight: 500, color: theme.t1, marginBottom: 10, fontFamily: "'Noto Serif TC', serif" }}>
-              偵測到雲端資料
-            </div>
-            <div style={{ fontSize: 14, color: theme.t2, lineHeight: 1.7, marginBottom: 20 }}>
-              雲端和本機都有資料，要用哪一份？
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={resolveUseLocal} style={{ ...btnSecondary(theme), flex: 1 }}>用本機資料</button>
-              <button onClick={resolveUseCloud} style={{ ...btnPrimary(theme), flex: 1 }}>用雲端資料</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Toast */}
       <ToastContainer toasts={toasts} onDismiss={dismissToast} theme={theme} isMobile={isMobile} />
